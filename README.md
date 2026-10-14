@@ -37,10 +37,11 @@ gantt
     Model comparison and results table [14] :crit, t14, 2026-11-02, 2026-11-06
     Console MVP done :milestone, m1, 2026-11-06, 0d
     section 2 · Service
-    REST API (FastAPI) [15] :t15, 2026-11-07, 2026-11-14
-    Database and load-aware routing [16] :t16, 2026-11-07, 2026-11-18
-    Translation RU ↔ EN [17] :t17, 2026-11-14, 2026-11-24
-    Web form and ticket list [18] :t18, 2026-11-12, 2026-11-24
+    Django project, data models and load-aware routing [15] :t15, 2026-11-07, 2026-11-13
+    Django admin users, roles, departments, all tickets [16] :t16, 2026-11-13, 2026-11-19
+    Request form connected to the pipeline [17] :t17, 2026-11-07, 2026-11-14
+    Specialist dashboard take tickets and change statuses [18] :t18, 2026-11-12, 2026-11-24
+    Translation RU ↔ EN (if time allows) [23] :t23, 2026-11-16, 2026-11-24
     Iteration 2 testing [19] :t19, 2026-11-23, 2026-11-27
     Service done :milestone, m2, 2026-11-27, 0d
     section 3 · Final
@@ -66,10 +67,11 @@ gantt
 | [#12](https://github.com/Leenday/support_megatron_mk1/issues/12) | Evaluation script and TF-IDF baseline | 2026-10-27 | 2026-11-04 | Daniil |  |
 | [#13](https://github.com/Leenday/support_megatron_mk1/issues/13) | CLI: text in, JSON ticket out | 2026-10-29 | 2026-11-02 | Denis |  |
 | [#14](https://github.com/Leenday/support_megatron_mk1/issues/14) | Model comparison and results table | 2026-11-02 | 2026-11-06 | Denis |  |
-| [#15](https://github.com/Leenday/support_megatron_mk1/issues/15) | REST API (FastAPI) | 2026-11-07 | 2026-11-14 | Denis |  |
-| [#16](https://github.com/Leenday/support_megatron_mk1/issues/16) | Database and load-aware routing | 2026-11-07 | 2026-11-18 | Roman |  |
-| [#17](https://github.com/Leenday/support_megatron_mk1/issues/17) | Translation RU <-> EN | 2026-11-14 | 2026-11-24 | Denis |  |
-| [#18](https://github.com/Leenday/support_megatron_mk1/issues/18) | Web form and ticket list | 2026-11-12 | 2026-11-24 | Daniil |  |
+| [#15](https://github.com/Leenday/support_megatron_mk1/issues/15) | Django project, data models and load-aware routing | 2026-11-07 | 2026-11-13 | Roman |  |
+| [#16](https://github.com/Leenday/support_megatron_mk1/issues/16) | Django admin: users, roles, departments, all tickets | 2026-11-13 | 2026-11-19 | Roman |  |
+| [#17](https://github.com/Leenday/support_megatron_mk1/issues/17) | Request form connected to the pipeline | 2026-11-07 | 2026-11-14 | Denis |  |
+| [#18](https://github.com/Leenday/support_megatron_mk1/issues/18) | Specialist dashboard: take tickets and change statuses | 2026-11-12 | 2026-11-24 | Daniil |  |
+| [#23](https://github.com/Leenday/support_megatron_mk1/issues/23) | Translation RU <-> EN (if time allows) | 2026-11-16 | 2026-11-24 | Denis |  |
 | [#19](https://github.com/Leenday/support_megatron_mk1/issues/19) | Iteration 2 testing | 2026-11-23 | 2026-11-27 | All |  |
 | [#20](https://github.com/Leenday/support_megatron_mk1/issues/20) | Voice input with Whisper (optional) | 2026-11-28 | 2026-12-05 | Denis |  |
 | [#21](https://github.com/Leenday/support_megatron_mk1/issues/21) | Final metrics and report | 2026-11-28 | 2026-12-10 | All |  |
@@ -81,7 +83,7 @@ gantt
 |---|---|---|
 | 0 · Initiation and methods review | 2026-10-16 | Idea, first presentation, methods review, impact map, calendar plan. |
 | 1 · Console MVP | 2026-11-06 | Iteration 1: console app, text in -> JSON ticket out; test set and model comparison. |
-| 2 · Service | 2026-11-27 | Iteration 2: REST API, database, load-aware routing, web form and ticket list, RU/EN translation. |
+| 2 · Service | 2026-11-27 | Iteration 2: Django service: request form, specialist dashboard with statuses, Django admin, load-aware routing, RU/EN translation if time allows. |
 | 3 · Final | 2026-12-14 | Optional voice input, final metrics, report and final presentation. The programme ends in mid-December; exact date to be confirmed. |
 
 *Dates after 2026-10-16 are planned and may shift; the final date depends on the programme schedule (mid-December).*
