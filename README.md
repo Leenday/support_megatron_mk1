@@ -4,6 +4,7 @@ Megatron-mk1 turns a user's free-text request into a structured support ticket a
 
 - **Input:** a request in Russian or English (text; voice later).
 - **Output:** a JSON ticket — who, where, when, what, summary, tags, department — always valid against the ticket schema.
+- **Interface:** a Django web app — request form, specialist dashboard (take tickets, statuses), built-in admin panel.
 - **How:** an LLM with schema-constrained output (local Qwen3-8B via Ollama; GigaChat API as backup) + a weighted routing score (profile match and current load).
 
 **Team (group 2, SPbPU, Higher School of Cyber-Physical Systems Control):** Daniil Pliukhin, Roman Grin, Denis Gorshkov.
