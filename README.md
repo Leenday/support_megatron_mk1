@@ -1,5 +1,7 @@
 # Megatron-mk1 — intelligent technical support system
 
+[![CI](https://github.com/Leenday/support_megatron_mk1/actions/workflows/ci.yml/badge.svg?branch=develop)](https://github.com/Leenday/support_megatron_mk1/actions/workflows/ci.yml)
+
 Megatron-mk1 turns a user's free-text request into a structured support ticket and assigns it to the most suitable and least busy support department.
 
 - **Input:** a request in Russian or English (text; voice later).
@@ -32,6 +34,8 @@ docker compose run --rm tests                    # pytest in a container
 docker compose run --rm megatron "text"          # CLI; reaches native Ollama via host.docker.internal
 docker compose --profile ollama-cpu up -d ollama # CPU-only Ollama for machines without a native install
 ```
+
+**CI.** GitHub Actions ([.github/workflows/ci.yml](.github/workflows/ci.yml)) runs ruff, pytest on Python 3.12 and 3.13, and a Docker build on every push and pull request.
 
 **Workflow.** Branches `feature/<issue>-<slug>` from `develop`, merged with `--no-ff`; `main` holds tagged releases (v0.1.0 = console MVP). Commit messages follow [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/). Details: [.claude/skills/git-workflow/SKILL.md](.claude/skills/git-workflow/SKILL.md).
 
