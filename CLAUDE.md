@@ -16,6 +16,7 @@ Free-text support request (RU/EN) → validated JSON ticket (who, where, when, w
 - `src/megatron/` — the package (src layout). `settings.py` reads `.env`.
 - `config/departments.yaml` — departments and routing weights; the ticket's `department` enum is built from it.
 - `tests/` — pytest, no network calls.
+- `.github/workflows/ci.yml` — GitHub Actions: ruff, pytest (3.12, 3.13), Docker build.
 - `compose.yaml`, `Dockerfile` — containers. Ollama runs natively on the Mac host (Docker on macOS has no Metal GPU); containers reach it at `http://host.docker.internal:11434`. The `ollama-cpu` compose profile is a CPU-only fallback.
 
 ## Rules
