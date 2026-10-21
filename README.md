@@ -9,6 +9,32 @@ Megatron-mk1 turns a user's free-text request into a structured support ticket a
 
 **Team (group 2, SPbPU, Higher School of Cyber-Physical Systems Control):** Daniil Pliukhin, Roman Grin, Denis Gorshkov.
 
+## Setup
+
+Requirements: [uv](https://docs.astral.sh/uv/) (installs Python 3.13 itself), Docker Desktop for the container setup, and [Ollama](https://ollama.com/) for the local model.
+
+```bash
+git clone git@github.com:Leenday/support_megatron_mk1.git && cd support_megatron_mk1
+uv sync                                  # .venv with the package and dev tools
+uv run pre-commit install                # pre-commit and commit-msg hooks
+cp .env.example .env                     # then edit: backend, Ollama URL, GigaChat key
+uv run pytest                            # tests
+uv run megatron --version
+```
+
+**Local model.** Run Ollama natively (on a Mac this uses the Apple GPU; Docker on macOS has no GPU access): `ollama pull qwen3:8b`.
+
+**Docker.**
+
+```bash
+docker compose build
+docker compose run --rm tests                    # pytest in a container
+docker compose run --rm megatron "text"          # CLI; reaches native Ollama via host.docker.internal
+docker compose --profile ollama-cpu up -d ollama # CPU-only Ollama for machines without a native install
+```
+
+**Workflow.** Branches `feature/<issue>-<slug>` from `develop`, merged with `--no-ff`; `main` holds tagged releases (v0.1.0 = console MVP). Commit messages follow [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/). Details: [.claude/skills/git-workflow/SKILL.md](.claude/skills/git-workflow/SKILL.md).
+
 ## Calendar plan
 
 Waterfall plan by stage. Critical points are highlighted. Tasks are tracked as [issues](https://github.com/Leenday/support_megatron_mk1/issues), stages as [milestones](https://github.com/Leenday/support_megatron_mk1/milestones).
