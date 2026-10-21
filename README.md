@@ -13,7 +13,7 @@ Megatron-mk1 turns a user's free-text request into a structured support ticket a
 
 ## Setup
 
-Requirements: [uv](https://docs.astral.sh/uv/) (installs Python 3.13 itself), Docker Desktop for the container setup, and [Ollama](https://ollama.com/) for the local model.
+Requirements: [uv](https://docs.astral.sh/uv/) (installs Python 3.13 itself) and Docker Desktop (runs Ollama and the app in containers).
 
 ```bash
 git clone git@github.com:Leenday/support_megatron_mk1.git && cd support_megatron_mk1
@@ -24,16 +24,18 @@ uv run pytest                            # tests
 uv run megatron --version
 ```
 
-**Local model.** Run Ollama natively (on a Mac this uses the Apple GPU; Docker on macOS has no GPU access): `ollama pull qwen3:8b`.
-
-**Docker.**
+**Docker (recommended).** Ollama runs as the `ollama` compose service, so everyone gets the same model server.
 
 ```bash
-docker compose build
+docker compose up -d ollama                      # model server
+docker compose run --rm ollama-pull              # download OLLAMA_MODEL once (qwen3:8b, 5.2 GB)
+docker compose run --rm megatron "text"          # CLI, talks to http://ollama:11434
 docker compose run --rm tests                    # pytest in a container
-docker compose run --rm megatron "text"          # CLI; reaches native Ollama via host.docker.internal
-docker compose --profile ollama-cpu up -d ollama # CPU-only Ollama for machines without a native install
 ```
+
+- **Memory.** qwen3:8b needs about 6 GB of free RAM inside Docker. In Docker Desktop set *Settings → Resources → Memory* to at least 10 GB and stop containers you don't need.
+- **Speed.** On macOS Docker has no GPU access, so the model runs on CPU and is slower than a native Ollama. For fast runs on a Mac, install Ollama natively and set `OLLAMA_BASE_URL_DOCKER=http://host.docker.internal:11434` in `.env`.
+- **NVIDIA GPU** (Linux, Windows + WSL 2): `docker compose -f compose.yaml -f compose.gpu.yaml up -d ollama`.
 
 **CI.** GitHub Actions ([.github/workflows/ci.yml](.github/workflows/ci.yml)) runs ruff, pytest on Python 3.12 and 3.13, and a Docker build on every push and pull request.
 
