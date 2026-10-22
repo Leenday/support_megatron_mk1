@@ -56,7 +56,7 @@ gantt
     Initiation and methods review done :milestone, m0, 2026-10-16, 0d
     section 1 · Console MVP
     Repository skeleton and dev setup [5] :done, t5, 2026-10-17, 2026-10-20
-    Ticket schema and department config [6] :t6, 2026-10-17, 2026-10-22
+    Ticket schema and department config [6] :done, t6, 2026-10-17, 2026-10-22
     Test set 50-100 requests in Russian and English [7] :t7, 2026-10-17, 2026-10-29
     LLM adapter local Qwen3 (Ollama) + GigaChat backup [8] :t8, 2026-10-20, 2026-10-29
     Prompt with department descriptions [9] :t9, 2026-10-22, 2026-10-29
@@ -88,7 +88,7 @@ gantt
 | [#3](https://github.com/Leenday/support_megatron_mk1/issues/3) | Impact map and user stories (Miro) | 2026-10-09 | 2026-10-14 | Denis | ✅ |
 | [#4](https://github.com/Leenday/support_megatron_mk1/issues/4) | Calendar plan (waterfall Gantt chart) | 2026-10-14 | 2026-10-16 | Denis | ✅ |
 | [#5](https://github.com/Leenday/support_megatron_mk1/issues/5) | Repository skeleton and dev setup | 2026-10-17 | 2026-10-20 | Denis | ✅ |
-| [#6](https://github.com/Leenday/support_megatron_mk1/issues/6) | Ticket schema and department config | 2026-10-17 | 2026-10-22 | Roman |  |
+| [#6](https://github.com/Leenday/support_megatron_mk1/issues/6) | Ticket schema and department config | 2026-10-17 | 2026-10-22 | Roman | ✅ |
 | [#7](https://github.com/Leenday/support_megatron_mk1/issues/7) | Test set: 50-100 requests in Russian and English | 2026-10-17 | 2026-10-29 | Daniil |  |
 | [#8](https://github.com/Leenday/support_megatron_mk1/issues/8) | LLM adapter: local Qwen3 (Ollama) + GigaChat backup | 2026-10-20 | 2026-10-29 | Denis |  |
 | [#9](https://github.com/Leenday/support_megatron_mk1/issues/9) | Prompt with department descriptions | 2026-10-22 | 2026-10-29 | Denis |  |
