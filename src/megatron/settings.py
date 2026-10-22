@@ -12,6 +12,6 @@ class Settings(BaseSettings):
 
     llm_backend: Literal["ollama", "gigachat"] = "ollama"
     ollama_base_url: str = "http://localhost:11434"
-    ollama_model: str = "qwen3:8b"
+    ollama_model: str = "qwen3:1.7b"
     gigachat_credentials: SecretStr | None = None
     departments_path: Path = Path("config/departments.yaml")
