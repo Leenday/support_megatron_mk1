@@ -24,15 +24,15 @@ uv run pytest                            # tests
 uv run megatron --version
 ```
 
-**Docker.**
+**Run (Docker).** Ollama runs as a compose service with the small `qwen3:1.7b` model (1.4 GB, fits CPU-only Docker on a Mac).
 
 ```bash
-docker compose build
-docker compose run --rm tests                    # pytest in a container
-docker compose run --rm megatron --version       # CLI
+docker compose run --rm demo                 # requests from data/demo_requests.txt -> JSON tickets
+docker compose run --rm megatron "текст"     # one request
+docker compose run --rm tests                # pytest in a container
 ```
 
-The model server (Ollama) is not part of the compose setup yet: containers reach it through `OLLAMA_BASE_URL_DOCKER` (default: Ollama on the host, `http://host.docker.internal:11434`).
+The first run starts Ollama and downloads the model. Docker on macOS has no GPU access, so each request takes tens of seconds to a minute on CPU. For a faster model server (native Ollama or a remote one) set `OLLAMA_BASE_URL_DOCKER` in `.env` and add `--no-deps`. Locally without Docker: `uv run megatron "текст"` with `OLLAMA_BASE_URL`.
 
 **CI.** GitHub Actions ([.github/workflows/ci.yml](.github/workflows/ci.yml)) runs ruff, pytest on Python 3.12 and 3.13, and a Docker build on every push and pull request. New PRs are announced in the project topic of the team's Telegram group ([.github/workflows/pr-telegram.yml](.github/workflows/pr-telegram.yml)).
 
