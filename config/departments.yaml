@@ -1,6 +1,8 @@
 # Support departments. The ticket's `department` field may only take an `id` from this list
 # (it becomes a JSON-schema enum for the LLM). `description` and `tags` go into the prompt
-# and the profile-match part of routing.
+# and the profile-match part of routing, so they are in English for all departments.
+#
+# name_ru, name_en — display names for people (UI, reports)
 #
 # capacity      — how many open tickets the department can handle at once
 # open_tickets  — mock current load for iteration 1; in iteration 2 it comes from the database
@@ -13,7 +15,8 @@ routing:
 
 departments:
   - id: hardware
-    name: Оборудование и рабочие места
+    name_ru: Оборудование и рабочие места
+    name_en: Hardware and workplaces
     description: >-
       Computers, laptops, monitors, printers, scanners, phones and other office equipment:
       breakdowns, replacement, setting up a new workplace, peripherals that do not work.
@@ -23,7 +26,8 @@ departments:
     open_tickets: 4
 
   - id: network
-    name: Сеть и связь
+    name_ru: Сеть и связь
+    name_en: Network and communications
     description: >-
       Internet and local network access, Wi-Fi, VPN, slow or dropped connections,
       network drives, IP telephony.
@@ -33,7 +37,8 @@ departments:
     open_tickets: 5
 
   - id: software
-    name: Software and accounts
+    name_ru: ПО и учётные записи
+    name_en: Software and accounts
     description: >-
       Installing and updating software, application errors, licences, e-mail and office
       suite problems, user accounts, passwords, access rights to systems and folders.
@@ -43,7 +48,8 @@ departments:
     open_tickets: 3
 
   - id: security
-    name: Информационная безопасность
+    name_ru: Информационная безопасность
+    name_en: Information security
     description: >-
       Suspicious e-mails and phishing, viruses and malware, lost or stolen devices,
       suspected data leaks or unauthorised access.
@@ -53,7 +59,8 @@ departments:
     open_tickets: 1
 
   - id: general
-    name: Общая поддержка
+    name_ru: Общая поддержка
+    name_en: General support
     description: >-
       Requests that are unclear, too short to classify, or do not fit any other department.
       A specialist clarifies the request and forwards it.

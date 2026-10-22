@@ -10,6 +10,11 @@ def test_config_loads(departments):
     assert departments.routing.w_match + departments.routing.w_load == pytest.approx(1.0)
 
 
+def test_display_names_in_both_languages(departments):
+    software = departments.get("software")
+    assert (software.name_ru, software.name_en) == ("ПО и учётные записи", "Software and accounts")
+
+
 def test_load_is_share_of_capacity(departments):
     assert departments.get("network").load == pytest.approx(5 / 8)
 

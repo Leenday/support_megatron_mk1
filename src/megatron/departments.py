@@ -11,7 +11,8 @@ Language = Literal["ru", "en"]
 
 class Department(BaseModel):
     id: str = Field(pattern=r"^[a-z][a-z0-9_]*$")
-    name: str
+    name_ru: str
+    name_en: str
     description: str
     tags: list[str] = Field(min_length=1)
     language: Language
