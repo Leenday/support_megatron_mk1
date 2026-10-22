@@ -1,0 +1,43 @@
+# Posts a message to a Telegram chat when a pull request is opened or marked ready.
+# Needs repository secrets TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID (see README);
+# without them the job is skipped. Secrets are not available for PRs from forks.
+# API: https://core.telegram.org/bots/api#sendmessage
+name: PR to Telegram
+
+on:
+  pull_request:
+    types: [opened, reopened, ready_for_review]
+
+permissions: {}
+
+jobs:
+  notify:
+    if: ${{ !github.event.pull_request.draft }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send message
+        env:
+          TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          THREAD_ID: ${{ vars.TELEGRAM_THREAD_ID }}
+          ACTION: ${{ github.event.action }}
+          NUMBER: ${{ github.event.pull_request.number }}
+          TITLE: ${{ github.event.pull_request.title }}
+          URL: ${{ github.event.pull_request.html_url }}
+          AUTHOR: ${{ github.event.pull_request.user.login }}
+          HEAD: ${{ github.event.pull_request.head.ref }}
+          BASE: ${{ github.event.pull_request.base.ref }}
+        run: |
+          if [ -z "$TOKEN" ] || [ -z "$CHAT_ID" ]; then
+            echo "::notice::TELEGRAM_BOT_TOKEN or TELEGRAM_CHAT_ID is not set, skipping"
+            exit 0
+          fi
+          esc() { sed -e 's/&/\&amp;/g' -e 's/</\&lt;/g' -e 's/>/\&gt;/g' <<<"$1"; }
+          text="🔀 PR #${NUMBER} ${ACTION}: <a href=\"${URL}\">$(esc "$TITLE")</a>
+          <code>$(esc "$HEAD")</code> → <code>$(esc "$BASE")</code> · $(esc "$AUTHOR")"
+          jq -n --arg chat "$CHAT_ID" --arg text "$text" --arg thread "$THREAD_ID" '
+            {chat_id: $chat, text: $text, parse_mode: "HTML",
+             link_preview_options: {is_disabled: true}}
+            + (if $thread != "" then {message_thread_id: ($thread | tonumber)} else {} end)' \
+          | curl -fsS -X POST "https://api.telegram.org/bot${TOKEN}/sendMessage" \
+              -H "Content-Type: application/json" -d @- > /dev/null
