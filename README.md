@@ -1,5 +1,7 @@
 # Megatron-mk1 — intelligent technical support system
 
+[![CI](https://github.com/Leenday/support_megatron_mk1/actions/workflows/ci.yml/badge.svg?branch=develop)](https://github.com/Leenday/support_megatron_mk1/actions/workflows/ci.yml)
+
 Megatron-mk1 turns a user's free-text request into a structured support ticket and assigns it to the most suitable and least busy support department.
 
 - **Input:** a request in Russian or English (text; voice later).
@@ -7,7 +9,42 @@ Megatron-mk1 turns a user's free-text request into a structured support ticket a
 - **Interface:** a Django web app — request form, specialist dashboard (take tickets, statuses), built-in admin panel.
 - **How:** an LLM with schema-constrained output (local Qwen3-8B via Ollama; GigaChat API as backup) + a weighted routing score (profile match and current load).
 
-**Team (group 2, SPbPU, Higher School of Cyber-Physical Systems Control):** Daniil Pliukhin, Roman Grin, Denis Gorshkov.
+**Team (group 2, SPbPU, Higher School of Cyber-Physical Systems Control):** Daniil, Roman, Denis.
+
+## Setup
+
+Requirements: [uv](https://docs.astral.sh/uv/) (installs Python 3.13 itself) and Docker Desktop.
+
+```bash
+git clone git@github.com:Leenday/support_megatron_mk1.git && cd support_megatron_mk1
+uv sync                                  # .venv with the package and dev tools
+uv run pre-commit install                # pre-commit and commit-msg hooks
+cp .env.example .env                     # then edit: backend, Ollama URL, GigaChat key
+uv run pytest                            # tests
+uv run megatron --version
+```
+
+**Docker.**
+
+```bash
+docker compose build
+docker compose run --rm tests                    # pytest in a container
+docker compose run --rm megatron --version       # CLI
+```
+
+The model server (Ollama) is not part of the compose setup yet: containers reach it through `OLLAMA_BASE_URL_DOCKER` (default: Ollama on the host, `http://host.docker.internal:11434`).
+
+**CI.** GitHub Actions ([.github/workflows/ci.yml](.github/workflows/ci.yml)) runs ruff, pytest on Python 3.12 and 3.13, and a Docker build on every push and pull request.
+
+**PR notifications in Telegram.** [.github/workflows/pr-telegram.yml](.github/workflows/pr-telegram.yml) posts to a Telegram chat when a PR is opened, reopened or marked ready. One-time setup:
+1. Create a bot with [@BotFather](https://t.me/BotFather) (`/newbot`) and copy its token.
+2. Add the bot to the team chat and send a message there, e.g. `/start@<bot_name>`.
+3. Find the chat id: open `https://api.telegram.org/bot<token>/getUpdates` and take `message.chat.id` (negative for groups). For a forum topic, also note `message.message_thread_id`.
+4. Save them in the repo: `gh secret set TELEGRAM_BOT_TOKEN`, `gh secret set TELEGRAM_CHAT_ID`, and optionally `gh variable set TELEGRAM_THREAD_ID`.
+
+Without the secrets the job is skipped.
+
+**Workflow.** `develop` is the default branch. Each change: issue → branch `feature/<issue>-<slug>` from `develop` → PR into `develop` (template: `Closes #N`, demo recording) → *Squash and merge* after CI is green. `develop` and `main` are protected (PR + CI required). At the end of an iteration a `Release v0.X.0` PR merges `develop` into `main` with a merge commit and is tagged. Commit messages and PR titles follow [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/). Details: [.claude/skills/git-workflow/SKILL.md](.claude/skills/git-workflow/SKILL.md).
 
 ## Calendar plan
 
@@ -21,12 +58,12 @@ gantt
     todayMarker on
     section 0 · Initiation and methods review
     Project idea and first presentation [1] :done, t1, 2026-09-25, 2026-10-02
-    Methods review and choice of methods [2] :crit, t2, 2026-10-03, 2026-10-16
+    Methods review and choice of methods [2] :done, crit, t2, 2026-10-03, 2026-10-16
     Impact map and user stories (Miro) [3] :done, t3, 2026-10-09, 2026-10-14
-    Calendar plan (waterfall Gantt chart) [4] :t4, 2026-10-14, 2026-10-16
+    Calendar plan (waterfall Gantt chart) [4] :done, t4, 2026-10-14, 2026-10-16
     Initiation and methods review done :milestone, m0, 2026-10-16, 0d
     section 1 · Console MVP
-    Repository skeleton and dev setup [5] :t5, 2026-10-17, 2026-10-20
+    Repository skeleton and dev setup [5] :done, t5, 2026-10-17, 2026-10-20
     Ticket schema and department config [6] :t6, 2026-10-17, 2026-10-22
     Test set 50-100 requests in Russian and English [7] :t7, 2026-10-17, 2026-10-29
     LLM adapter local Qwen3 (Ollama) + GigaChat backup [8] :t8, 2026-10-20, 2026-10-29
@@ -55,10 +92,10 @@ gantt
 | Issue | Task | Start | Due | Owner | Done |
 |---|---|---|---|---|---|
 | [#1](https://github.com/Leenday/support_megatron_mk1/issues/1) | Project idea and first presentation | 2026-09-25 | 2026-10-02 | All | ✅ |
-| [#2](https://github.com/Leenday/support_megatron_mk1/issues/2) | Methods review and choice of methods | 2026-10-03 | 2026-10-16 | Denis |  |
+| [#2](https://github.com/Leenday/support_megatron_mk1/issues/2) | Methods review and choice of methods | 2026-10-03 | 2026-10-16 | Denis | ✅ |
 | [#3](https://github.com/Leenday/support_megatron_mk1/issues/3) | Impact map and user stories (Miro) | 2026-10-09 | 2026-10-14 | Denis | ✅ |
-| [#4](https://github.com/Leenday/support_megatron_mk1/issues/4) | Calendar plan (waterfall Gantt chart) | 2026-10-14 | 2026-10-16 | Denis |  |
-| [#5](https://github.com/Leenday/support_megatron_mk1/issues/5) | Repository skeleton and dev setup | 2026-10-17 | 2026-10-20 | Denis |  |
+| [#4](https://github.com/Leenday/support_megatron_mk1/issues/4) | Calendar plan (waterfall Gantt chart) | 2026-10-14 | 2026-10-16 | Denis | ✅ |
+| [#5](https://github.com/Leenday/support_megatron_mk1/issues/5) | Repository skeleton and dev setup | 2026-10-17 | 2026-10-20 | Denis | ✅ |
 | [#6](https://github.com/Leenday/support_megatron_mk1/issues/6) | Ticket schema and department config | 2026-10-17 | 2026-10-22 | Roman |  |
 | [#7](https://github.com/Leenday/support_megatron_mk1/issues/7) | Test set: 50-100 requests in Russian and English | 2026-10-17 | 2026-10-29 | Daniil |  |
 | [#8](https://github.com/Leenday/support_megatron_mk1/issues/8) | LLM adapter: local Qwen3 (Ollama) + GigaChat backup | 2026-10-20 | 2026-10-29 | Denis |  |
