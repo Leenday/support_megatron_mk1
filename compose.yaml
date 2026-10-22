@@ -1,0 +1,36 @@
+# Iteration 1: CLI + tests. Iteration 2 adds `web` (Django) and `db` (Postgres).
+#
+#   docker compose run --rm megatron "text"   # CLI
+#   docker compose run --rm tests             # pytest
+#
+# Ollama is not containerised: on macOS Docker has no GPU access, and qwen3:8b needs
+# ~6 GB of free RAM inside Docker. Run Ollama natively (or on a server) and point
+# OLLAMA_BASE_URL_DOCKER at it; the default is the Ollama on this host.
+
+x-app-env: &app-env
+  LLM_BACKEND: ${LLM_BACKEND:-ollama}
+  OLLAMA_BASE_URL: ${OLLAMA_BASE_URL_DOCKER:-http://host.docker.internal:11434}
+  OLLAMA_MODEL: ${OLLAMA_MODEL:-qwen3:8b}
+  GIGACHAT_CREDENTIALS: ${GIGACHAT_CREDENTIALS:-}
+  DEPARTMENTS_PATH: config/departments.yaml
+
+services:
+  megatron:
+    build:
+      context: .
+      target: runtime
+    environment: *app-env
+    volumes:
+      - ./config:/app/config:ro
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  tests:
+    build:
+      context: .
+      target: dev
+    entrypoint: ["pytest"]
+    volumes:
+      - ./src:/app/src
+      - ./tests:/app/tests
+      - ./config:/app/config:ro
