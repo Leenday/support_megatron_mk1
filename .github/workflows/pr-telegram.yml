@@ -1,6 +1,7 @@
 # Posts a message to a Telegram chat when a pull request is opened or marked ready.
-# Needs repository secrets TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID (see README);
-# without them the job is skipped. Secrets are not available for PRs from forks.
+# Needs repository secrets TELEGRAM_BOT_TOKEN (from @BotFather) and TELEGRAM_CHAT_ID, and
+# optionally the variable TELEGRAM_THREAD_ID for a forum topic (ids from the bot's getUpdates).
+# Without the secrets the job is skipped. Secrets are not available for PRs from forks.
 # API: https://core.telegram.org/bots/api#sendmessage
 name: PR to Telegram
 

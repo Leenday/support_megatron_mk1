@@ -34,15 +34,7 @@ docker compose run --rm megatron --version       # CLI
 
 The model server (Ollama) is not part of the compose setup yet: containers reach it through `OLLAMA_BASE_URL_DOCKER` (default: Ollama on the host, `http://host.docker.internal:11434`).
 
-**CI.** GitHub Actions ([.github/workflows/ci.yml](.github/workflows/ci.yml)) runs ruff, pytest on Python 3.12 and 3.13, and a Docker build on every push and pull request.
-
-**PR notifications in Telegram.** [.github/workflows/pr-telegram.yml](.github/workflows/pr-telegram.yml) posts to a Telegram chat when a PR is opened, reopened or marked ready. One-time setup:
-1. Create a bot with [@BotFather](https://t.me/BotFather) (`/newbot`) and copy its token.
-2. Add the bot to the team chat and send a message there, e.g. `/start@<bot_name>`.
-3. Find the chat id: open `https://api.telegram.org/bot<token>/getUpdates` and take `message.chat.id` (negative for groups). For a forum topic, also note `message.message_thread_id`.
-4. Save them in the repo: `gh secret set TELEGRAM_BOT_TOKEN`, `gh secret set TELEGRAM_CHAT_ID`, and optionally `gh variable set TELEGRAM_THREAD_ID`.
-
-Without the secrets the job is skipped.
+**CI.** GitHub Actions ([.github/workflows/ci.yml](.github/workflows/ci.yml)) runs ruff, pytest on Python 3.12 and 3.13, and a Docker build on every push and pull request. New PRs are announced in the project topic of the team's Telegram group ([.github/workflows/pr-telegram.yml](.github/workflows/pr-telegram.yml)).
 
 **Workflow.** `develop` is the default branch. Each change: issue → branch `feature/<issue>-<slug>` from `develop` → PR into `develop` (template: `Closes #N`, demo recording) → *Squash and merge* after CI is green. `develop` and `main` are protected (PR + CI required). At the end of an iteration a `Release v0.X.0` PR merges `develop` into `main` with a merge commit and is tagged. Commit messages and PR titles follow [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/). Details: [.claude/skills/git-workflow/SKILL.md](.claude/skills/git-workflow/SKILL.md).
 
