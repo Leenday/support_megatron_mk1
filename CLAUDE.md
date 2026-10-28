@@ -13,7 +13,8 @@ Free-text support request (RU/EN) → validated JSON ticket (who, where, when, w
 
 ## Layout
 
-- `src/megatron/` — the package (src layout): `settings.py` (.env), `__main__.py` (CLI).
+- `src/megatron/` — the package (src layout): `settings.py` (.env), `departments.py` (config loader), `ticket.py` (ticket schema), `__main__.py` (CLI).
+- `config/departments.yaml` — departments and routing weights; the ticket's `department` enum is built from it.
 - `tests/` — pytest, no network calls.
 - `.github/workflows/ci.yml` — GitHub Actions: ruff, pytest (3.12, 3.13), Docker build.
 - `compose.yaml`, `Dockerfile` — containers. Ollama is not containerised (no GPU in Docker on macOS); containers reach it via `OLLAMA_BASE_URL_DOCKER` (default `http://host.docker.internal:11434`).
