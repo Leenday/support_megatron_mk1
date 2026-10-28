@@ -19,7 +19,7 @@ No release branches: each iteration is one release.
 | `hotfix/<version>` | until merged | `main` | `main`, then `develop` | PR into each |
 
 `develop` and `main` are never recreated. GitHub rulesets on both: changes only through a PR,
-CI (`lint`, `test (3.12)`, `test (3.13)`, `docker`) must pass, no force pushes, no deletion.
+CI (`lint`, `test (3.12)`, `test (3.13)`, `docker`, and `pr-title` on `develop`) must pass, no force pushes, no deletion.
 Allowed merge method: squash into `develop`, merge commit into `main` (a squash there would
 break the next release PR). Merged branches are deleted automatically.
 
@@ -35,12 +35,12 @@ break the next release PR). Merged branches are deleted automatically.
 Conventional Commits 1.0.0 (https://www.conventionalcommits.org/en/v1.0.0/), English, `Refs #N` footer.
 Types: `feat`, `fix`, `docs`, `test`, `refactor`, `build`, `ci`, `chore`.
 Scopes: `schema`, `config`, `llm`, `routing`, `cli`, `eval`, `docker`, `web`.
-Never add `Co-Authored-By: Claude …` or "Generated with Claude Code" (disabled in `.claude/settings.json`, rejected by the `commit-msg` hook).
-Run `uv run pytest` and `uv run pre-commit run --all-files` before committing.
+Never add `Co-Authored-By: Claude …` or "Generated with Claude Code" (disabled in `.claude/settings.json`, rejected by the `commit-msg` hook). The `commit-msg` hook also rejects messages that are not Conventional Commits.
+Run `uv run pytest` and `uv run pre-commit run --all-files` (ruff, ty, deptry) before committing.
 
 ## Pull requests
 
-- Base `develop`. **Title = the squash commit title**, so it must be a Conventional Commit: `feat(llm): add Ollama adapter`.
+- Base `develop`. **Title = the squash commit title**, so it must be a Conventional Commit: `feat(llm): add Ollama adapter`. The `pr-title` check fails otherwise; after editing the title it reruns.
 - Body follows `.github/pull_request_template.md`: What · Issues · How to check · Demo.
 - Issues: `Closes #N` only if the PR meets the issue's "Done when"; otherwise `Refs #N`. One keyword per issue: `Closes #8, closes #13`. Keywords work because `develop` is the default branch.
 - Demo for behaviour changes: the user records the screen (Cmd+Shift+5) running the command from "How to check" (e.g. a `docker compose run --rm ...` command) and drags the .mov/.mp4 (≤ 10 MB) into the PR. `gh` cannot upload attachments.

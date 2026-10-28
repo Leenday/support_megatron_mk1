@@ -16,9 +16,11 @@ megatron = "megatron.__main__:main"
 
 [dependency-groups]
 dev = [
+    "deptry==0.25.1",
     "pre-commit>=4.3",
     "pytest>=8.4",
     "ruff>=0.17",
+    "ty==0.0.92",
 ]
 
 [build-system]
@@ -28,6 +30,9 @@ build-backend = "uv_build"
 [tool.pytest.ini_options]
 addopts = ["--import-mode=importlib"]
 testpaths = ["tests"]
+
+[tool.deptry]
+known_first_party = ["megatron"]  # src layout: deptry cannot infer it
 
 [tool.ruff]
 line-length = 100

@@ -27,3 +27,25 @@ repos:
         language: pygrep
         entry: '(?i)(co-authored-by:.*(claude|anthropic)|generated with \[?claude)'
         stages: [commit-msg]
+
+      # Conventional Commits 1.0.0 with the types from the git-workflow skill.
+      - id: conventional-commit
+        name: "commit message is a Conventional Commit: <type>(<scope>): <summary>"
+        language: pygrep
+        entry: '\A(?:(?:fixup|squash|amend)! )*(?:feat|fix|docs|test|refactor|build|ci|chore)(?:\([a-z0-9-]+\))?!?: \S'
+        args: [--multiline, --negate]
+        stages: [commit-msg]
+
+      - id: ty
+        name: ty check
+        language: system
+        entry: uv run --locked ty check
+        types: [python]
+        pass_filenames: false
+
+      - id: deptry
+        name: deptry
+        language: system
+        entry: uv run --locked deptry .
+        files: (\.py|pyproject\.toml|uv\.lock)$
+        pass_filenames: false

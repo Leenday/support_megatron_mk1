@@ -1,4 +1,4 @@
-# Lint and tests on every push and pull request.
+# Lint (ruff, ty, deptry) and tests on every push and pull request.
 # uv setup follows https://docs.astral.sh/uv/guides/integration/github/
 name: CI
 
@@ -26,6 +26,8 @@ jobs:
       - run: uv sync --locked
       - run: uv run ruff check .
       - run: uv run ruff format --check .
+      - run: uv run ty check
+      - run: uv run deptry .
 
   test:
     runs-on: ubuntu-latest

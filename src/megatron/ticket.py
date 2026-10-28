@@ -30,7 +30,8 @@ class Ticket(BaseModel):
 
 def build_ticket_model(config: DepartmentsConfig) -> type[Ticket]:
     """Return a Ticket subclass whose `department` only accepts ids from `config`."""
-    department_ids = Literal[tuple(config.ids)]  # type: ignore[valid-type]
+    # Built from runtime values on purpose: static checkers cannot follow it, Pydantic can.
+    department_ids = Literal[tuple(config.ids)]  # ty: ignore[invalid-type-form]
     return create_model(
         "Ticket",
         __base__=Ticket,
