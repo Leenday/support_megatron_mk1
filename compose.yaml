@@ -1,6 +1,6 @@
 # Iteration 1: request text -> JSON ticket.
 #
-#   docker compose run --rm demo              # run data/demo_requests.txt (starts Ollama, pulls the model)
+#   docker compose run --rm demo              # run data/demo_requests.jsonl (starts Ollama, pulls the model)
 #   docker compose run --rm megatron "text"   # one request
 #   docker compose run --rm demo -o out/demo.jsonl   # save results to ./out (JSON Lines)
 #   docker compose run --rm tests             # pytest
@@ -63,7 +63,7 @@ services:
   demo:
     <<: *app
     # In the entrypoint, not `command`, so extra args (e.g. -o out/demo.jsonl) are appended.
-    entrypoint: ["megatron", "--file", "data/demo_requests.txt"]
+    entrypoint: ["megatron", "--file", "data/demo_requests.jsonl"]
 
   tests:
     build:

@@ -1,0 +1,7 @@
+{"id": 1, "text": "Здравствуйте, это Петрова из бухгалтерии, каб. 305. С утра не печатает принтер, пишет замятие бумаги.", "expected": "hardware"}
+{"id": 2, "text": "Не могу зайти в 1С, пишет что пароль истёк. Иванов, отдел продаж", "expected": "software"}
+{"id": 3, "text": "VPN from home keeps disconnecting every 5 minutes since yesterday evening. - John, marketing", "expected": "network"}
+{"id": 4, "text": "Пришло письмо якобы от директора с просьбой срочно оплатить счёт по ссылке, я нажала на ссылку", "expected": "security"}
+{"id": 5, "text": "помогите пожалуйста", "expected": "general"}
+{"id": 6, "text": "The new laptop for our intern in room 12 has no keyboard and the monitor flickers.", "expected": "hardware"}
+{"id": 7, "expected": "software", "text": "Добрый день!\n\nНе могу войти в CRM под логином a.smirnova: после ввода пароля пишет «Учётная запись заблокирована».\nВ прошлый раз была такая же проблема, заявка INC-20417.\n\nС уважением,\nАнна Смирнова, отдел продаж"}

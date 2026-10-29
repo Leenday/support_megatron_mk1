@@ -2,6 +2,7 @@
 
 megatron "request text"
 megatron --file requests.txt     # one request per line
+megatron --file requests.jsonl   # {"text": ..., "expected": <department>} per line
 megatron ... -o out/result.json  # save instead of printing (JSON Lines with --file)
 """
 
@@ -15,6 +16,7 @@ from typing import Any
 
 from megatron import __version__
 from megatron.departments import load_departments
+from megatron.inputs import Request, RequestFileError, load_requests
 from megatron.llm import BackendError, ExtractionError, build_extractor
 from megatron.settings import Settings
 
@@ -27,7 +29,11 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
     source = parser.add_mutually_exclusive_group()
     source.add_argument("text", nargs="?", help="request text")
-    source.add_argument("--file", type=Path, help="file with one request per line")
+    source.add_argument(
+        "--file",
+        type=Path,
+        help="requests: .txt with one per line, or .jsonl with a `text` (and `expected`) key",
+    )
     parser.add_argument(
         "-o",
         "--output",
@@ -51,10 +57,13 @@ def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
     if args.file:
-        lines = args.file.read_text(encoding="utf-8").splitlines()
-        requests = [line.strip() for line in lines if line.strip() and not line.startswith("#")]
+        try:
+            requests = load_requests(args.file)
+        except RequestFileError as e:
+            print(f"error: {e}", file=sys.stderr)
+            return 2
     elif args.text:
-        requests = [args.text]
+        requests = [Request(text=args.text)]
     else:
         parser.print_help()
         return 0
@@ -62,22 +71,29 @@ def main(argv: list[str] | None = None) -> int:
     logging.basicConfig(level=logging.WARNING, format="%(levelname)s %(name)s: %(message)s")
     settings = Settings()
     config = load_departments(settings.departments_path)
+    unknown = sorted({r.expected for r in requests if r.expected} - set(config.ids))
+    if unknown:
+        path = settings.departments_path
+        print(f"error: expected departments {unknown} are not in {path}", file=sys.stderr)
+        return 2
     extractor = build_extractor(config, settings)
     print(f"model: {extractor.model} at {extractor.endpoint}", file=sys.stderr)
 
     results: list[dict[str, Any]] = []
-    failed = 0
-    for i, text in enumerate(requests, 1):
+    failed = correct = 0
+    for i, request in enumerate(requests, 1):
         if len(requests) > 1:
             print(f"\n=== {i}/{len(requests)} ===")
-        print(f"> {text}")
+        print(f"> {request.text}")
+        fields = {"id": request.id, "request": request.text, "expected": request.expected}
+        record: dict[str, Any] = {k: v for k, v in fields.items() if v is not None}
         start = time.perf_counter()
         try:
-            ticket = extractor.extract(text)
+            ticket = extractor.extract(request.text)
         except ExtractionError as e:
             failed += 1
             print(f"error: {e}")
-            results.append({"request": text, "error": str(e)})
+            results.append(record | {"error": str(e)})
             continue
         except BackendError as e:
             # Unreachable server or a rejected key: the remaining requests would fail the same way.
@@ -87,8 +103,17 @@ def main(argv: list[str] | None = None) -> int:
         seconds = round(time.perf_counter() - start, 1)
         if args.output is None:
             print(ticket.model_dump_json(indent=2))
-        print(f"→ {ticket.department} · {seconds:.1f} s")
-        results.append({"request": text, "ticket": ticket.model_dump(), "seconds": seconds})
+        verdict = ""
+        if request.expected:
+            hit = ticket.department == request.expected
+            correct += hit
+            verdict = f" · expected {request.expected} {'✓' if hit else '✗'}"
+        print(f"→ {ticket.department} · {seconds:.1f} s{verdict}")
+        results.append(record | {"ticket": ticket.model_dump(), "seconds": seconds})
+
+    labelled = sum(1 for r in requests if r.expected)
+    if labelled:
+        print(f"\ndepartment correct: {correct}/{labelled}")
 
     # A single request that failed leaves no file: there is no ticket to save.
     if args.output and (args.file or not failed):

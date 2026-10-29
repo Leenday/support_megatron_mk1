@@ -20,6 +20,7 @@ TICKET = {
     "where": "каб. 305",
     "when": "с утра",
     "what": "Принтер не печатает, замятие бумаги",
+    "identifiers": [],
     "summary": "Замятие бумаги в принтере",
     "tags": ["принтер", "замятие"],
     "department": "hardware",
@@ -207,3 +208,72 @@ def test_backend_error_stops_the_run(tmp_path, monkeypatch, capsys, departments,
     assert "> two" not in out
     with pytest.raises(BackendError):
         extractor.extract("text")
+
+
+def write_jsonl(path, *rows: dict) -> None:
+    path.write_text(
+        "".join(json.dumps(r, ensure_ascii=False) + "\n" for r in rows), encoding="utf-8"
+    )
+
+
+def test_cli_jsonl_reports_expected_departments(
+    tmp_path, monkeypatch, capsys, departments, departments_path
+):
+    requests = tmp_path / "requests.jsonl"
+    write_jsonl(
+        requests,
+        {"text": "принтер\nне печатает", "expected": "hardware"},
+        {"text": "VPN", "expected": "network"},
+    )
+    extractor, _ = make(departments, json.dumps(TICKET), json.dumps(TICKET))
+    output = tmp_path / "results.jsonl"
+    argv = ["--file", str(requests), "-o", str(output)]
+    assert run_cli(monkeypatch, departments_path, extractor, *argv) == 0
+    out = capsys.readouterr().out
+    assert "expected hardware ✓" in out
+    assert "expected network ✗" in out
+    assert "department correct: 1/2" in out
+    first = json.loads(output.read_text(encoding="utf-8").splitlines()[0])
+    assert (first["request"], first["expected"]) == ("принтер\nне печатает", "hardware")
+
+
+def test_cli_rejects_unknown_expected_department(
+    tmp_path, monkeypatch, capsys, departments, departments_path
+):
+    requests = tmp_path / "requests.jsonl"
+    requests.write_text('{"text": "x", "expected": "accounting"}\n', encoding="utf-8")
+    extractor, client = make(departments)
+    assert run_cli(monkeypatch, departments_path, extractor, "--file", str(requests)) == 2
+    assert "accounting" in capsys.readouterr().err
+    assert client.calls == []
+
+
+def test_multi_line_jsonl_request_with_other_languages_and_no_load(
+    tmp_path, monkeypatch, capsys, queues, queues_path
+):
+    """Done-when of #31: a dataset-style config (en/de, no load) and a multi-line request."""
+    text = "Guten Tag,\n\ndie Rechnung INV-2041 wurde doppelt abgebucht.\n\nKonto: k.weber"
+    requests = tmp_path / "requests.jsonl"
+    write_jsonl(requests, {"id": 1, "text": text, "expected": "billing"})
+    answer = {
+        **TICKET,
+        "who": "k.weber",
+        "where": None,
+        "when": None,
+        "what": "Die Rechnung INV-2041 wurde doppelt abgebucht.",
+        "identifiers": ["INV-2041", "k.weber"],
+        "summary": "Doppelte Abbuchung",
+        "tags": ["Rechnung", "Abbuchung"],
+        "department": "billing",
+        "language": "de",
+    }
+    extractor, client = make(queues, json.dumps(answer))
+    output = tmp_path / "results.jsonl"
+    argv = ["--file", str(requests), "-o", str(output)]
+    assert run_cli(monkeypatch, queues_path, extractor, *argv) == 0
+    assert client.calls[0]["messages"][1]["content"] == text
+    assert "(en, de)" in client.calls[0]["messages"][0]["content"]
+    ticket = json.loads(output.read_text(encoding="utf-8"))["ticket"]
+    assert ticket["language"] == "de"
+    assert ticket["identifiers"] == ["INV-2041", "k.weber"]
+    assert "department correct: 1/1" in capsys.readouterr().out

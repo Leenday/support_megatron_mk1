@@ -10,13 +10,14 @@ Free-text support request (RU/EN) → validated JSON ticket (who, where, when, w
 - `uv run ty check` · `uv run deptry .` — types, dependencies (`uv run pre-commit run --all-files` runs everything)
 - `uv run pre-commit install --hook-type pre-commit --hook-type commit-msg` — once per clone
 - `uv run megatron "text"` — CLI (`--file requests.txt`, `-o out/result.json`; JSON Lines with `--file`)
-- `docker compose run --rm demo` (data/demo_requests.txt → tickets) · `docker compose run --rm megatron "text"` · `docker compose run --rm tests`
+- `docker compose run --rm demo` (data/demo_requests.jsonl → tickets, ✓/✗ against `expected`) · `docker compose run --rm megatron "text"` · `docker compose run --rm tests`
 
 ## Layout
 
-- `src/megatron/` — the package (src layout): `settings.py` (.env), `departments.py` (config loader), `ticket.py` (ticket schema), `prompt.py`, `llm.py` (`Extractor`: schema-constrained output + retry; `OllamaExtractor`, `OpenAIExtractor`, picked by `LLM_BACKEND`), `__main__.py` (CLI, `--file`).
+- `src/megatron/` — the package (src layout): `settings.py` (.env), `departments.py` (config loader), `ticket.py` (ticket schema), `prompt.py`, `inputs.py` (request files: .txt or .jsonl with `text`/`expected`), `llm.py` (`Extractor`: schema-constrained output + retry; `OllamaExtractor`, `OpenAIExtractor`, picked by `LLM_BACKEND`), `__main__.py` (CLI, `--file`).
 - `config/departments.yaml` — departments and routing weights; the ticket's `department` enum is built from it.
-- `tests/` — pytest, no network calls.
+- `data/` — demo requests; `data/local/` — real requests and datasets, never committed (git-ignored + pre-commit hook).
+- `tests/` — pytest, no network calls; `tests/data/queues.yaml` — dataset-style config (en/de, no load).
 - `.github/workflows/ci.yml` — GitHub Actions: ruff, ty, deptry, pytest (3.12, 3.13), Docker build. `pr-title.yml` — PR title into `develop` must be a Conventional Commit.
 - `compose.yaml`, `Dockerfile` — containers. Ollama is the `ollama` compose service on CPU with `qwen3:1.7b` (qwen3:8b does not fit the Docker VM); `ollama-pull` downloads the model. Another Ollama: `OLLAMA_BASE_URL_DOCKER` + `--no-deps`.
 

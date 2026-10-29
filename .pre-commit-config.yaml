@@ -49,3 +49,10 @@ repos:
         entry: uv run --locked deptry .
         files: (\.py|pyproject\.toml|uv\.lock)$
         pass_filenames: false
+
+      # data/local/ is git-ignored; this also stops `git add -f`.
+      - id: no-local-data
+        name: nothing from data/local/ is committed
+        language: fail
+        entry: "data/local/ holds real requests and datasets and must stay on this machine"
+        files: ^data/local/

@@ -8,6 +8,7 @@ VALID = {
     "where": "room 214",
     "when": "this morning",
     "what": "The printer does not print, shows a paper jam error.",
+    "identifiers": ["HP-4015"],
     "summary": "Printer paper jam in room 214",
     "tags": ["printer", "paper jam"],
     "department": "hardware",
@@ -44,3 +45,16 @@ def test_json_schema_has_department_enum(departments):
     assert schema["properties"]["department"]["enum"] == departments.ids
     assert schema["properties"]["language"]["enum"] == ["ru", "en"]
     assert set(schema["required"]) == set(VALID)
+
+
+def test_language_outside_config_rejected(departments):
+    Ticket = build_ticket_model(departments)
+    with pytest.raises(ValidationError):
+        Ticket.model_validate({**VALID, "language": "de"})
+
+
+def test_languages_come_from_config(queues):
+    Ticket = build_ticket_model(queues)
+    assert Ticket.model_json_schema()["properties"]["language"]["enum"] == ["en", "de"]
+    ticket = Ticket.model_validate({**VALID, "department": "billing", "language": "de"})
+    assert ticket.language == "de"

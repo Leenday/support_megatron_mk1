@@ -1,13 +1,20 @@
-# Support departments. The ticket's `department` field may only take an `id` from this list
+# Support departments (any routing target: a department, queue, support line or category).
+# Another domain or dataset gets its own file, selected with DEPARTMENTS_PATH.
+#
+# The ticket's `department` field may only take an `id` from this list
 # (it becomes a JSON-schema enum for the LLM). `description` and `tags` go into the prompt
 # and the profile-match part of routing, so they are in English for all departments.
 #
 # name_ru, name_en — display names for people (UI, reports)
 #
-# capacity      — how many open tickets the department can handle at once
-# open_tickets  — mock current load for iteration 1; in iteration 2 it comes from the database
-# language      — language the department's tickets are written in (ru | en)
+# languages     — ticket languages (ISO 639-1); the first is used for requests in other languages
+# capacity      — optional: how many open tickets the department can handle at once
+# open_tickets  — optional: mock current load for iteration 1; in iteration 2 it comes from
+#                 the database. Give both for all departments, or leave them out everywhere.
+# language      — language the department's tickets are written in (one of `languages`)
 # fallback      — exactly one department receives requests that fit nowhere else
+
+languages: [ru, en]
 
 routing:
   w_match: 0.7  # weight of the profile match

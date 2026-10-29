@@ -44,3 +44,42 @@ def test_zero_capacity_rejected(departments):
     raw["departments"][0]["capacity"] = 0
     with pytest.raises(ValidationError):
         DepartmentsConfig.model_validate(raw)
+
+
+def test_languages_default_to_ru_en(departments):
+    assert departments.languages == ["ru", "en"]
+
+
+def test_load_and_routing_are_optional(queues):
+    assert queues.languages == ["en", "de"]
+    assert not queues.has_load
+    assert queues.get("billing").load is None
+    assert queues.routing.w_match == pytest.approx(0.7)
+
+
+def test_capacity_needs_open_tickets(departments):
+    raw = _raw(departments)
+    raw["departments"][0]["open_tickets"] = None
+    with pytest.raises(ValidationError, match="both capacity and open_tickets"):
+        DepartmentsConfig.model_validate(raw)
+
+
+def test_load_for_all_departments_or_none(departments):
+    raw = _raw(departments)
+    raw["departments"][0]["capacity"] = raw["departments"][0]["open_tickets"] = None
+    with pytest.raises(ValidationError, match="all departments or for none"):
+        DepartmentsConfig.model_validate(raw)
+
+
+def test_department_language_must_be_listed(departments):
+    raw = _raw(departments)
+    raw["departments"][0]["language"] = "de"
+    with pytest.raises(ValidationError, match="not in languages"):
+        DepartmentsConfig.model_validate(raw)
+
+
+def test_language_codes_are_iso_639_1(departments):
+    raw = _raw(departments)
+    raw["languages"] = ["ru", "English"]
+    with pytest.raises(ValidationError, match="ISO 639-1"):
+        DepartmentsConfig.model_validate(raw)

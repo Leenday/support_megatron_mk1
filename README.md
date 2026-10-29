@@ -27,7 +27,7 @@ uv run megatron --version
 **Run (Docker).** Ollama runs as a compose service with the small `qwen3:1.7b` model (1.4 GB, fits CPU-only Docker on a Mac).
 
 ```bash
-docker compose run --rm demo                 # requests from data/demo_requests.txt -> JSON tickets
+docker compose run --rm demo                 # requests from data/demo_requests.jsonl -> JSON tickets
 docker compose run --rm megatron "текст"     # one request
 docker compose run --rm megatron "текст" -o out/ticket.json   # save the ticket to ./out
 docker compose run --rm demo -o out/demo.jsonl               # save all results (JSON Lines)
@@ -35,6 +35,8 @@ docker compose run --rm tests                # pytest in a container
 ```
 
 The first run starts Ollama and downloads the model. Docker on macOS has no GPU access, so each request takes tens of seconds to a minute on CPU. For a faster model server (native Ollama or a remote one) set `OLLAMA_BASE_URL_DOCKER` in `.env` and add `--no-deps`. Locally without Docker: `uv run megatron "текст"` with `OLLAMA_BASE_URL`.
+
+**Departments and data.** [config/departments.yaml](config/departments.yaml) lists the routing targets (departments, queues, support lines or categories): `languages` (ticket languages, default `[ru, en]`) and optional load (`capacity`, `open_tickets`: for all departments or none). Another domain or dataset is another config file, selected with `DEPARTMENTS_PATH`. `--file` reads `.txt` (one request per line) or `.jsonl`, one `{"id": ..., "text": "...", "expected": "<department id>"}` per line: the text may span several lines, other keys are ignored, and with `expected` the CLI marks each answer ✓/✗ and prints `department correct: N/M`. Real requests and downloaded datasets go to `data/local/`: git and Docker ignore it, a pre-commit hook refuses to commit it, and compose sees it as `data/local/` (`docker compose run --rm megatron --file data/local/requests.jsonl`).
 
 **Model backend.** `LLM_BACKEND` in `.env` picks the model: `ollama` (default, local) or `openai` (`OPENAI_API_KEY`, `OPENAI_MODEL`, default `gpt-5.4-mini`; `OPENAI_BASE_URL` for any OpenAI-compatible API such as OpenRouter or vLLM). With `openai`, add `--no-deps` in Docker: `docker compose run --rm --no-deps megatron "текст"`. One request takes 1–2 s instead of tens of seconds.
 
