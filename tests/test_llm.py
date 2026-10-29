@@ -277,3 +277,9 @@ def test_multi_line_jsonl_request_with_other_languages_and_no_load(
     assert ticket["language"] == "de"
     assert ticket["identifiers"] == ["INV-2041", "k.weber"]
     assert "department correct: 1/1" in capsys.readouterr().out
+
+
+def test_extract_keeps_only_quoted_identifiers(departments):
+    answer = {**TICKET, "identifiers": ["a.smirnova", "ticket123"]}
+    extractor, _ = make(departments, json.dumps(answer))
+    assert extractor.extract("Не могу войти под логином a.smirnova").identifiers == ["a.smirnova"]

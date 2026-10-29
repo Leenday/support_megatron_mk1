@@ -26,8 +26,8 @@ class Ticket(BaseModel):
     when: str | None = Field(description="When it happened, as stated; null if unknown")
     what: str = Field(description="What is wrong, in one or two sentences")
     identifiers: list[str] = Field(
-        description="Phone numbers, message, order or ticket IDs, account names and logins "
-        "from the request, copied verbatim; empty if there are none"
+        description="Codes copied verbatim from the request: phone numbers, message, order or "
+        "ticket IDs, account names, logins. Not names, places or problem words; empty if none"
     )
     summary: str = Field(description="Short title of the ticket, up to 10 words")
     tags: list[str] = Field(description="3-6 short keywords")
@@ -49,3 +49,15 @@ def build_ticket_model(config: DepartmentsConfig) -> type[Ticket]:
         ),
         language=(languages, Field(description="Language the ticket fields are written in")),
     )
+
+
+def keep_quoted_identifiers(ticket: Ticket, text: str) -> Ticket:
+    """Drop identifiers that do not occur in the request text.
+
+    Small models fill the field with invented codes (seen with qwen3:1.7b: "user123" for a
+    request without any); an identifier is only useful if it is copied exactly.
+    """
+    kept = [i for i in ticket.identifiers if i and i in text]
+    if kept == ticket.identifiers:
+        return ticket
+    return ticket.model_copy(update={"identifiers": kept})

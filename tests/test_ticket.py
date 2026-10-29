@@ -1,7 +1,7 @@
 import pytest
 from pydantic import ValidationError
 
-from megatron.ticket import build_ticket_model
+from megatron.ticket import build_ticket_model, keep_quoted_identifiers
 
 VALID = {
     "who": "Ivanov, accounting",
@@ -58,3 +58,11 @@ def test_languages_come_from_config(queues):
     assert Ticket.model_json_schema()["properties"]["language"]["enum"] == ["en", "de"]
     ticket = Ticket.model_validate({**VALID, "department": "billing", "language": "de"})
     assert ticket.language == "de"
+
+
+def test_identifiers_not_in_the_request_are_dropped(departments):
+    ticket = build_ticket_model(departments).model_validate(
+        {**VALID, "identifiers": ["INC-20417", "user123", ""]}
+    )
+    kept = keep_quoted_identifiers(ticket, "Не могу войти, заявка INC-20417")
+    assert kept.identifiers == ["INC-20417"]
