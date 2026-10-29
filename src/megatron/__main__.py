@@ -15,7 +15,7 @@ from typing import Any
 
 from megatron import __version__
 from megatron.departments import load_departments
-from megatron.llm import ExtractionError, build_extractor
+from megatron.llm import BackendError, ExtractionError, build_extractor
 from megatron.settings import Settings
 
 
@@ -63,7 +63,7 @@ def main(argv: list[str] | None = None) -> int:
     settings = Settings()
     config = load_departments(settings.departments_path)
     extractor = build_extractor(config, settings)
-    print(f"model: {settings.ollama_model} at {settings.ollama_base_url}", file=sys.stderr)
+    print(f"model: {extractor.model} at {extractor.endpoint}", file=sys.stderr)
 
     results: list[dict[str, Any]] = []
     failed = 0
@@ -79,6 +79,11 @@ def main(argv: list[str] | None = None) -> int:
             print(f"error: {e}")
             results.append({"request": text, "error": str(e)})
             continue
+        except BackendError as e:
+            # Unreachable server or a rejected key: the remaining requests would fail the same way.
+            failed += 1
+            print(f"error: {e}")
+            break
         seconds = round(time.perf_counter() - start, 1)
         if args.output is None:
             print(ticket.model_dump_json(indent=2))

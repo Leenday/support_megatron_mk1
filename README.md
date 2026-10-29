@@ -7,7 +7,7 @@ Megatron-mk1 turns a user's free-text request into a structured support ticket a
 - **Input:** a request in Russian or English (text; voice later).
 - **Output:** a JSON ticket — who, where, when, what, summary, tags, department — always valid against the ticket schema.
 - **Interface:** a Django web app — request form, specialist dashboard (take tickets, statuses), built-in admin panel.
-- **How:** an LLM with schema-constrained output (local Qwen3-8B via Ollama; GigaChat API as backup) + a weighted routing score (profile match and current load).
+- **How:** an LLM with schema-constrained output (local Qwen3 via Ollama, or OpenAI / any OpenAI-compatible API; GigaChat API as backup) + a weighted routing score (profile match and current load).
 
 **Team (group 2, SPbPU, Higher School of Cyber-Physical Systems Control):** Daniil, Roman, Denis.
 
@@ -19,7 +19,7 @@ Requirements: [uv](https://docs.astral.sh/uv/) (installs Python 3.13 itself) and
 git clone git@github.com:Leenday/support_megatron_mk1.git && cd support_megatron_mk1
 uv sync                                  # .venv with the package and dev tools
 uv run pre-commit install                # pre-commit and commit-msg hooks
-cp .env.example .env                     # then edit: backend, Ollama URL, GigaChat key
+cp .env.example .env                     # then edit: backend, Ollama URL, OpenAI / GigaChat key
 uv run pytest                            # tests
 uv run megatron --version
 ```
@@ -35,6 +35,8 @@ docker compose run --rm tests                # pytest in a container
 ```
 
 The first run starts Ollama and downloads the model. Docker on macOS has no GPU access, so each request takes tens of seconds to a minute on CPU. For a faster model server (native Ollama or a remote one) set `OLLAMA_BASE_URL_DOCKER` in `.env` and add `--no-deps`. Locally without Docker: `uv run megatron "текст"` with `OLLAMA_BASE_URL`.
+
+**Model backend.** `LLM_BACKEND` in `.env` picks the model: `ollama` (default, local) or `openai` (`OPENAI_API_KEY`, `OPENAI_MODEL`, default `gpt-5.4-mini`; `OPENAI_BASE_URL` for any OpenAI-compatible API such as OpenRouter or vLLM). With `openai`, add `--no-deps` in Docker: `docker compose run --rm --no-deps megatron "текст"`. One request takes 1–2 s instead of tens of seconds.
 
 **CI.** GitHub Actions ([.github/workflows/ci.yml](.github/workflows/ci.yml)) runs ruff, the ty type checker, deptry (unused and missing dependencies), pytest on Python 3.12 and 3.13, and a Docker build on every push and pull request; [pr-title.yml](.github/workflows/pr-title.yml) checks that a PR title into `develop` is a Conventional Commit. The same checks run locally in the pre-commit hooks. New PRs are announced in the project topic of the team's Telegram group ([.github/workflows/pr-telegram.yml](.github/workflows/pr-telegram.yml)).
 

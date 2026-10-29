@@ -6,6 +6,7 @@ readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
     "ollama>=0.6",
+    "openai>=3.41",
     "pydantic>=2.11",
     "pydantic-settings>=2.10",
     "pyyaml>=6.0",

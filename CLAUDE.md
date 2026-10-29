@@ -14,7 +14,7 @@ Free-text support request (RU/EN) → validated JSON ticket (who, where, when, w
 
 ## Layout
 
-- `src/megatron/` — the package (src layout): `settings.py` (.env), `departments.py` (config loader), `ticket.py` (ticket schema), `prompt.py`, `llm.py` (Ollama adapter: schema-constrained output + retry), `__main__.py` (CLI, `--file`).
+- `src/megatron/` — the package (src layout): `settings.py` (.env), `departments.py` (config loader), `ticket.py` (ticket schema), `prompt.py`, `llm.py` (`Extractor`: schema-constrained output + retry; `OllamaExtractor`, `OpenAIExtractor`, picked by `LLM_BACKEND`), `__main__.py` (CLI, `--file`).
 - `config/departments.yaml` — departments and routing weights; the ticket's `department` enum is built from it.
 - `tests/` — pytest, no network calls.
 - `.github/workflows/ci.yml` — GitHub Actions: ruff, ty, deptry, pytest (3.12, 3.13), Docker build. `pr-title.yml` — PR title into `develop` must be a Conventional Commit.
