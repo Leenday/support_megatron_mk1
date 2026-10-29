@@ -1,13 +1,25 @@
+from pathlib import Path
+
 import pytest
 from pydantic import ValidationError
 
-from megatron.departments import DepartmentsConfig
+from megatron.departments import DepartmentsConfig, load_departments
 
 
 def test_config_loads(departments):
     assert departments.ids == ["hardware", "network", "software", "security", "general"]
     assert departments.fallback.id == "general"
     assert departments.routing.w_match + departments.routing.w_load == pytest.approx(1.0)
+
+
+def test_dataset_queues_config_loads():
+    path = Path(__file__).parents[1] / "config" / "queues_en.yaml"
+    queues = load_departments(path)
+    # Ids as megatron-testset derives them from the dataset's queue labels.
+    assert len(queues.ids) == 10
+    assert "service_outages_and_maintenance" in queues.ids
+    assert queues.fallback.id == "general_inquiry"
+    assert not queues.has_load
 
 
 def test_display_names_in_both_languages(departments):
