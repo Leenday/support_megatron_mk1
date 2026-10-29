@@ -4,6 +4,7 @@ A department is any routing target: a department, a queue, a support line or a c
 Each dataset or deployment can have its own config file (`DEPARTMENTS_PATH`).
 """
 
+from itertools import pairwise
 from pathlib import Path
 from typing import Self
 
@@ -42,6 +43,15 @@ class Department(BaseModel):
 class RoutingWeights(BaseModel):
     w_match: float = Field(default=0.7, ge=0)
     w_load: float = Field(default=0.3, ge=0)
+    # Profile match of the model's 1st, 2nd, ... candidate; its length caps the candidates.
+    rank_match: list[float] = Field(default=[1.0, 0.6, 0.3], min_length=1)
+
+    @model_validator(mode="after")
+    def _check_rank_match(self) -> Self:
+        values = self.rank_match
+        if any(not 0 < v <= 1 for v in values) or any(a <= b for a, b in pairwise(values)):
+            raise ValueError(f"rank_match must be decreasing values in (0, 1], got {values}")
+        return self
 
 
 class DepartmentsConfig(BaseModel):

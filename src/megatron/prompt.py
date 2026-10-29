@@ -10,8 +10,10 @@ You turn a support request into a ticket.
   order or ticket IDs, account names, logins. Names, places and words describing the problem
   do not go there. Use [] if the request has no such codes; never make one up.
 - Write a short summary (up to 10 words) and 3-6 short tags.
-- Choose the department whose description fits the request best.
-  Use "{fallback}" if the request is unclear or fits no other department.
+- In "candidates", put the department whose description fits the request best first, then
+  up to {more} others that could also handle it, best fit first. List only departments
+  that really fit. Use "{fallback}" alone if the request is unclear or fits no other
+  department; never list it together with another department.
 - Write the ticket fields in the language of the request and set "language" to it ({languages}).
   If the request is in another language, write the fields in {default_language}.
 """
@@ -20,6 +22,7 @@ You turn a support request into a ticket.
 def build_system_prompt(config: DepartmentsConfig) -> str:
     instructions = INSTRUCTIONS.format(
         fallback=config.fallback.id,
+        more=len(config.routing.rank_match) - 1,
         languages=", ".join(config.languages),
         default_language=config.languages[0],
     )

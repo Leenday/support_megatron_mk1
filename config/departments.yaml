@@ -1,9 +1,9 @@
 # Support departments (any routing target: a department, queue, support line or category).
 # Another domain or dataset gets its own file, selected with DEPARTMENTS_PATH.
 #
-# The ticket's `department` field may only take an `id` from this list
-# (it becomes a JSON-schema enum for the LLM). `description` and `tags` go into the prompt
-# and the profile-match part of routing, so they are in English for all departments.
+# The ticket's `candidates` may only take ids from this list (a JSON-schema enum for the LLM).
+# The model picks them by `description`, which is in the prompt, so descriptions and tags
+# are in English for all departments.
 #
 # name_ru, name_en — display names for people (UI, reports)
 #
@@ -16,9 +16,13 @@
 
 languages: [ru, en]
 
+# Routing: score = w_match * match + w_load * (1 - load) over the model's candidate
+# departments (best fit first); match of the 1st, 2nd, 3rd candidate is rank_match. Without
+# load the best fit wins. A department the model did not list never gets the ticket.
 routing:
   w_match: 0.7  # weight of the profile match
   w_load: 0.3   # weight of free capacity, (1 - load)
+  rank_match: [1.0, 0.6, 0.3]
 
 departments:
   - id: hardware

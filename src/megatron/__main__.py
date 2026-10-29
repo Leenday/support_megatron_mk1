@@ -18,6 +18,7 @@ from megatron import __version__
 from megatron.departments import load_departments
 from megatron.inputs import Request, RequestFileError, load_requests
 from megatron.llm import BackendError, ExtractionError, build_extractor
+from megatron.routing import route
 from megatron.settings import Settings
 
 
@@ -101,14 +102,19 @@ def main(argv: list[str] | None = None) -> int:
             print(f"error: {e}")
             break
         seconds = round(time.perf_counter() - start, 1)
+        ticket = route(ticket, config)
         if args.output is None:
             print(ticket.model_dump_json(indent=2))
+        best_fit = ticket.candidates[0]
+        moved = f" (best fit {best_fit} is busy)" if ticket.department != best_fit else ""
         verdict = ""
         if request.expected:
-            hit = ticket.department == request.expected
+            # The expected department is the one that fits the request, so it is compared
+            # with the model's best fit: a ticket moved for load is not a model error.
+            hit = best_fit == request.expected
             correct += hit
             verdict = f" · expected {request.expected} {'✓' if hit else '✗'}"
-        print(f"→ {ticket.department} · {seconds:.1f} s{verdict}")
+        print(f"→ {ticket.department}{moved} · {seconds:.1f} s{verdict}")
         results.append(record | {"ticket": ticket.model_dump(), "seconds": seconds})
 
     labelled = sum(1 for r in requests if r.expected)
