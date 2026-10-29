@@ -10,11 +10,13 @@ dependencies = [
     "pydantic>=2.11",
     "pydantic-settings>=2.10",
     "pyyaml>=6.0",
+    "scikit-learn>=1.7",
 ]
 
 [project.scripts]
 megatron = "megatron.__main__:main"
 megatron-testset = "megatron.testset_cli:main"
+megatron-eval = "megatron.eval_cli:main"
 
 [dependency-groups]
 dev = [
@@ -55,3 +57,4 @@ select = [
 [tool.ruff.lint.per-file-ignores]
 "src/megatron/__main__.py" = ["T20"]
 "src/megatron/testset_cli.py" = ["T20"]
+"src/megatron/eval_cli.py" = ["T20"]

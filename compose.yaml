@@ -4,6 +4,8 @@
 #   docker compose run --rm megatron "text"   # one request
 #   docker compose run --rm demo -o out/demo.jsonl   # save results to ./out (JSON Lines)
 #   docker compose run --rm tests             # pytest
+#   DEPARTMENTS_PATH=config/queues_en.yaml docker compose run --rm eval data/local/en --run
+#                                             # score the model on a test set (#12)
 #
 # Ollama runs in Docker on CPU (no GPU in Docker on macOS), so the default model is the
 # small qwen3:1.7b (1.4 GB, ~2 GB RAM). Expect tens of seconds to minutes per request.
@@ -23,7 +25,7 @@ x-app: &app
     OPENAI_MODEL: ${OPENAI_MODEL:-gpt-5.4-mini}
     OPENAI_BASE_URL: ${OPENAI_BASE_URL:-}
     GIGACHAT_CREDENTIALS: ${GIGACHAT_CREDENTIALS:-}
-    DEPARTMENTS_PATH: config/departments.yaml
+    DEPARTMENTS_PATH: ${DEPARTMENTS_PATH:-config/departments.yaml}
   volumes:
     - ./config:/app/config:ro
     - ./data:/app/data:ro
@@ -64,6 +66,10 @@ services:
     <<: *app
     # In the entrypoint, not `command`, so extra args (e.g. -o out/demo.jsonl) are appended.
     entrypoint: ["megatron", "--file", "data/demo_requests.jsonl"]
+
+  eval:
+    <<: *app
+    entrypoint: ["megatron-eval"]
 
   tests:
     build:

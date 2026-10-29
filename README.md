@@ -48,6 +48,19 @@ uv run megatron-testset data/local/tobi-bueck/tickets.csv --text subject,body --
 DEPARTMENTS_PATH=config/queues_en.yaml uv run megatron --file data/local/en/test.jsonl
 ```
 
+**Evaluation.** `megatron-eval <set>` scores a test set built by `megatron-testset`. With `--run` it first runs the configured backend (`LLM_BACKEND`, `DEPARTMENTS_PATH`) on `test.jsonl` and appends the results to `out/eval/<set>/<model>.jsonl`; a rerun skips the requests already there, so an interrupted run of a slow model resumes. The report (printed and saved to `out/eval/<set>/report.md`) has every results file of the set next to two baselines trained on `dev.jsonl` (the majority class and TF-IDF + logistic regression):
+
+- department: accuracy and macro-F1 of the model's best fit, the share of requests whose expected department is among the candidates, valid answers (and valid on the first attempt), seconds per request (median, 90th percentile);
+- fields on the checked gold subset: precision, recall and F1 per field. Free-text fields match when their word overlap (token F1 over word stems) is at least 0.5, identifiers are compared as sets; a failed request counts as an empty ticket, so failures lower recall;
+- dropped identifiers: how often the guardrail removed identifiers that are not in the request text;
+- 95 % bootstrap ranges, since the sets are small.
+
+```bash
+DEPARTMENTS_PATH=config/queues_en.yaml LLM_BACKEND=openai uv run megatron-eval data/local/en --run
+DEPARTMENTS_PATH=config/queues_en.yaml docker compose run --rm eval data/local/en --run   # qwen3:1.7b
+uv run megatron-eval data/local/en                # report only, from the saved results
+```
+
 **Routing.** The model lists 1–3 candidate departments, best fit first. Each candidate gets `score = w_match · match + w_load · (1 − load)`, where `match` is 1.0 / 0.6 / 0.3 by rank (`routing` in the config), and the ticket goes to the highest score. Only candidates are scored, so a department the model did not list never gets the ticket, and the fallback department counts only as the best fit; without load the best fit wins, with load a nearly full best fit can lose to a free second candidate.
 
 **Model backend.** `LLM_BACKEND` in `.env` picks the model: `ollama` (default, local) or `openai` (`OPENAI_API_KEY`, `OPENAI_MODEL`, default `gpt-5.4-mini`; `OPENAI_BASE_URL` for any OpenAI-compatible API such as OpenRouter or vLLM). With `openai`, add `--no-deps` in Docker: `docker compose run --rm --no-deps megatron "текст"`. One request takes 1–2 s instead of tens of seconds.

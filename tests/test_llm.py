@@ -310,3 +310,12 @@ def test_cli_routes_a_busy_best_fit_to_the_next_candidate(
     out = capsys.readouterr().out
     assert "→ software (best fit hardware is busy)" in out
     assert "expected hardware ✓" in out
+
+
+def test_extract_detailed_reports_attempts_and_dropped_identifiers(departments):
+    answer = {**TICKET, "identifiers": ["a.smirnova", "user123"]}
+    extractor, _ = make(departments, "bad", json.dumps(answer))
+    extraction = extractor.extract_detailed("Не могу войти под логином a.smirnova")
+    assert extraction.attempts == 2
+    assert extraction.dropped_identifiers == ["user123"]
+    assert extraction.ticket.identifiers == ["a.smirnova"]
