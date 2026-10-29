@@ -14,6 +14,7 @@ dependencies = [
 
 [project.scripts]
 megatron = "megatron.__main__:main"
+megatron-testset = "megatron.testset_cli:main"
 
 [dependency-groups]
 dev = [
@@ -53,3 +54,4 @@ select = [
 
 [tool.ruff.lint.per-file-ignores]
 "src/megatron/__main__.py" = ["T20"]
+"src/megatron/testset_cli.py" = ["T20"]
