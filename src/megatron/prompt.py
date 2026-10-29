@@ -2,13 +2,24 @@
 
 from megatron.departments import DepartmentsConfig
 
+# Bumped on every change of the instructions; results record it, so runs can be compared (#9).
+PROMPT_VERSION = "v3"
+
 INSTRUCTIONS = """\
 You turn a support request into a ticket.
-- Extract who reports the problem, where it happened, when it happened and what is wrong.
-  Use null for who, where or when if the request does not say.
-- Copy codes from the request into "identifiers" exactly as written: phone numbers, message,
-  order or ticket IDs, account names, logins. Names, places and words describing the problem
-  do not go there. Use [] if the request has no such codes; never make one up.
+- "who": the person, client, account or organisation the request is about or that reports
+  it, with its ID if the request gives one ("client 1042", "hospital IT department"). Not
+  the support team the message is addressed to.
+- "where": the product, system, service, channel or place of the problem in a few words,
+  using the words of the request and its names ("VPN gateway", "CRM -> messenger"); no URLs.
+- "when": when it happened, as stated (dates, times, "since this morning").
+- Use null for who, where or when if the request does not say.
+- "what": what is wrong or what is asked, in one sentence (up to 20 words) that names the
+  affected product or system, so it can be read on its own.
+- Copy codes from the request into "identifiers" exactly as written, without labels such as
+  "ID": phone numbers, message, order or ticket IDs, account names, logins. Names, places,
+  URLs and words describing the problem do not go there. Use [] if the request has no such
+  codes; never make one up.
 - Write a short summary (up to 10 words) and 3-6 short tags.
 - In "candidates", put the department whose description fits the request best first, then
   up to {more} others that could also handle it, best fit first. List only departments

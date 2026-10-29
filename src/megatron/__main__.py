@@ -19,6 +19,7 @@ from megatron import __version__
 from megatron.departments import load_departments
 from megatron.inputs import Request, RequestFileError, load_requests
 from megatron.llm import BackendError, ExtractionError, add_llm_arguments, build_extractor
+from megatron.prompt import PROMPT_VERSION
 from megatron.routing import route
 from megatron.settings import Settings
 
@@ -88,7 +89,13 @@ def main(argv: list[str] | None = None) -> int:
         if len(requests) > 1:
             print(f"\n=== {i}/{len(requests)} ===")
         print(f"> {request.text}")
-        fields = {"id": request.id, "request": request.text, "expected": request.expected}
+        fields = {
+            "id": request.id,
+            "request": request.text,
+            "expected": request.expected,
+            "model": extractor.model,
+            "prompt": PROMPT_VERSION,
+        }
         record: dict[str, Any] = {k: v for k, v in fields.items() if v is not None}
         start = time.perf_counter()
         try:

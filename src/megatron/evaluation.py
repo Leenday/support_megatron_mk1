@@ -15,7 +15,7 @@ from collections.abc import Callable, Iterable, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.linear_model import LogisticRegression
 from sklearn.pipeline import make_pipeline
@@ -42,6 +42,8 @@ class Result(BaseModel):
     id: str | int | None = None
     request: str
     expected: str | None = None
+    model: str | None = None
+    prompt: str | None = Field(default=None, description="PROMPT_VERSION the ticket was made with")
     ticket: RoutedTicket | None = None
     error: str | None = None
     seconds: float | None = None
