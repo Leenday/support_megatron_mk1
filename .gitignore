@@ -15,6 +15,9 @@ htmlcov/
 # CLI results (-o out/...)
 out/
 
+# Real requests and downloaded datasets stay on this machine
+data/local/
+
 # Secrets and local settings
 .env
 .claude/settings.local.json

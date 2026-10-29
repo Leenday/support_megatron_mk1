@@ -1,8 +1,0 @@
-# Demo requests, one per line (lines starting with # are skipped). Expected departments, in order:
-# hardware, software, network, security, general, hardware.
-Здравствуйте, это Петрова из бухгалтерии, каб. 305. С утра не печатает принтер, пишет замятие бумаги.
-Не могу зайти в 1С, пишет что пароль истёк. Иванов, отдел продаж
-VPN from home keeps disconnecting every 5 minutes since yesterday evening. - John, marketing
-Пришло письмо якобы от директора с просьбой срочно оплатить счёт по ссылке, я нажала на ссылку
-помогите пожалуйста
-The new laptop for our intern in room 12 has no keyboard and the monitor flickers.

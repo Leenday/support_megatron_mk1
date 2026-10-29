@@ -18,7 +18,7 @@ from pydantic import ValidationError
 from megatron.departments import DepartmentsConfig
 from megatron.prompt import build_system_prompt
 from megatron.settings import Settings
-from megatron.ticket import Ticket, build_ticket_model
+from megatron.ticket import Ticket, build_ticket_model, keep_quoted_identifiers
 
 logger = logging.getLogger(__name__)
 
@@ -56,9 +56,11 @@ class Extractor(ABC):
         for attempt in range(1, self.max_retries + 2):
             content = self.complete(messages, schema)
             try:
-                return self.ticket_model.model_validate_json(content)
+                ticket = self.ticket_model.model_validate_json(content)
             except ValidationError as e:
                 logger.warning("attempt %d: invalid ticket from %s: %s", attempt, self.model, e)
+            else:
+                return keep_quoted_identifiers(ticket, text)
         raise ExtractionError(f"{self.model} returned no valid ticket after {attempt} attempts")
 
 
