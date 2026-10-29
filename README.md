@@ -29,6 +29,8 @@ uv run megatron --version
 ```bash
 docker compose run --rm demo                 # requests from data/demo_requests.txt -> JSON tickets
 docker compose run --rm megatron "текст"     # one request
+docker compose run --rm megatron "текст" -o out/ticket.json   # save the ticket to ./out
+docker compose run --rm demo -o out/demo.jsonl               # save all results (JSON Lines)
 docker compose run --rm tests                # pytest in a container
 ```
 

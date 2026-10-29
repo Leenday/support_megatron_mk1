@@ -12,6 +12,9 @@ dist/
 .coverage
 htmlcov/
 
+# CLI results (-o out/...)
+out/
+
 # Secrets and local settings
 .env
 .claude/settings.local.json

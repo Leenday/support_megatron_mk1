@@ -9,7 +9,7 @@ Free-text support request (RU/EN) → validated JSON ticket (who, where, when, w
 - `uv run ruff check --fix . && uv run ruff format .` — lint and format
 - `uv run ty check` · `uv run deptry .` — types, dependencies (`uv run pre-commit run --all-files` runs everything)
 - `uv run pre-commit install --hook-type pre-commit --hook-type commit-msg` — once per clone
-- `uv run megatron "text"` — CLI
+- `uv run megatron "text"` — CLI (`--file requests.txt`, `-o out/result.json`; JSON Lines with `--file`)
 - `docker compose run --rm demo` (data/demo_requests.txt → tickets) · `docker compose run --rm megatron "text"` · `docker compose run --rm tests`
 
 ## Layout
