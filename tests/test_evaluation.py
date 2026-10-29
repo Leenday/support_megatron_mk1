@@ -197,9 +197,9 @@ def test_model_report_uses_only_checked_gold():
 def test_render_lists_baselines_and_models():
     report = model_report("gpt", results(), [GOLD], rounds=20, seed=1)
     text = render("en", [report])
-    assert "## en: department (test, 3 requests)" in text
-    assert "| gpt | 0.33 (" in text
-    assert "## en: fields (gold, 1 requests)" in text
+    assert "## en: department (test part)" in text
+    assert "| gpt | 3 | 0.33 (" in text
+    assert "| gpt | 1 | " in text  # one gold request
     assert "1 in 1 of 3 tickets" in text
 
 
@@ -224,7 +224,7 @@ def write_set(path, requests: list[dict], gold: list[GoldTicket]) -> None:
 def test_cli_runs_backend_resumes_and_reports(
     tmp_path, monkeypatch, capsys, departments, departments_path
 ):
-    answer = TICKET | {"candidates": ["hardware"]}
+    answer = TICKET | {"candidates": ["hardware"], "when": None}
     extractor = OllamaExtractor(
         departments,
         Settings(_env_file=None, ollama_model="tiny:1b"),
@@ -246,6 +246,7 @@ def test_cli_runs_backend_resumes_and_reports(
     first = load_results(path)
     assert [r.id for r in first] == [1, 2]
     assert first[0].ticket is not None and first[0].attempts == 1
+    assert first[0].ticket.when is None  # a null field of the ticket survives the round trip
     assert first[1].error  # three invalid answers
 
     # The rerun only asks for the request that is missing.
@@ -254,8 +255,8 @@ def test_cli_runs_backend_resumes_and_reports(
     report = (out / "report.md").read_text(encoding="utf-8")
     assert "| majority class (3 train) |" in report
     assert "| TF-IDF + logreg (3 train) |" in report
-    assert "| tiny-1b | 0.67 (" in report
-    assert "fields (gold, 1 requests)" in report
+    assert "| tiny-1b | 3 | 0.67 (" in report
+    assert "| tiny-1b | 1 | " in report  # fields on one gold request
     assert "2 done, 1 to go" in capsys.readouterr().out
 
 

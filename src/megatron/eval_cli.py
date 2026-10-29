@@ -11,6 +11,7 @@ and skips requests already there, so an interrupted run of a slow model resumes.
 """
 
 import argparse
+import json
 import logging
 import re
 import sys
@@ -65,7 +66,7 @@ def run_backend(
     """Append a result per request not yet in `path`; False if the backend became unusable."""
     done = {str(r.id) for r in load_results(path)} if path.exists() else set()
     todo = [r for r in requests if str(r.id) not in done]
-    print(f"{extractor.model}: {len(done)} done, {len(todo)} to go -> {path}")
+    print(f"{extractor.model}: {len(done)} done, {len(todo)} to go -> {path}", flush=True)
     path.parent.mkdir(parents=True, exist_ok=True)
     for i, request in enumerate(todo, 1):
         result = Result(id=request.id, request=request.text, expected=request.expected)
@@ -84,10 +85,14 @@ def run_backend(
         result.seconds = round(time.perf_counter() - start, 1)
         verdict = "failed" if result.ticket is None else result.best_fit
         mark = "✓" if result.best_fit == request.expected else "✗"
-        print(f"[{i}/{len(todo)}] {result.seconds:.1f} s · {verdict} {mark} {request.expected}")
+        # Flushed: without a terminal (docker compose run -T, a log file) output is buffered.
+        line = f"[{i}/{len(todo)}] {result.seconds:.1f} s · {verdict} {mark} {request.expected}"
+        print(line, flush=True)
         # One line at a time, so an interrupted run keeps what it has done.
+        # Only top-level None values are left out: the ticket's null fields must stay.
+        record = {k: v for k, v in result.model_dump(mode="json").items() if v is not None}
         with path.open("a", encoding="utf-8") as f:
-            f.write(result.model_dump_json(exclude_none=True) + "\n")
+            f.write(json.dumps(record, ensure_ascii=False) + "\n")
     return True
 
 

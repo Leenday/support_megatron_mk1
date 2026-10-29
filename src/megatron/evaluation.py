@@ -296,30 +296,31 @@ def render(set_name: str, reports: Sequence[SystemReport]) -> str:
             return f"{value:.{digits}f}"
         return str(value)
 
-    n = reports[0].requests if reports else 0
+    # Sizes are per row: a model run may cover only part of the set.
     lines = [
-        f"## {set_name}: department (test, {n} requests)",
+        f"## {set_name}: department (test part)",
         "",
-        "| System | Accuracy | Macro-F1 | Expected in candidates | Valid | Valid 1st try "
-        "| s/request median · p90 |",
-        "|---|---|---|---|---|---|---|",
+        "| System | Requests | Accuracy | Macro-F1 | Expected in candidates | Valid "
+        "| Valid 1st try | s/request median · p90 |",
+        "|---|---|---|---|---|---|---|---|",
     ]
     for r in reports:
         seconds = (
             f"{r.seconds_median:.1f} · {r.seconds_p90:.1f}" if r.seconds_median is not None else "—"
         )
         lines.append(
-            f"| {r.name} | {cell(r.accuracy)} | {cell(r.macro_f1)} | {cell(r.in_candidates)} "
+            f"| {r.name} | {r.requests} | {cell(r.accuracy)} | {cell(r.macro_f1)} "
+            f"| {cell(r.in_candidates)} "
             f"| {cell(r.valid)} | {cell(r.first_try)} | {seconds} |"
         )
     models = [r for r in reports if r.field_f1]
     if models:
         lines += [
             "",
-            f"## {set_name}: fields (gold, {models[0].gold} requests): F1 (range), P / R",
+            f"## {set_name}: fields (gold subset): F1 (range), P / R",
             "",
-            "| System | " + " | ".join(FIELDS) + " | Dropped identifiers |",
-            "|---|" + "---|" * (len(FIELDS) + 1),
+            "| System | Gold | " + " | ".join(FIELDS) + " | Dropped identifiers |",
+            "|---|---|" + "---|" * (len(FIELDS) + 1),
         ]
         for r in models:
             cells = [
@@ -328,5 +329,5 @@ def render(set_name: str, reports: Sequence[SystemReport]) -> str:
                 for f in FIELDS
             ]
             dropped = f"{r.dropped} in {r.tickets_with_dropped} of {r.requests} tickets"
-            lines.append(f"| {r.name} | " + " | ".join(cells) + f" | {dropped} |")
+            lines.append(f"| {r.name} | {r.gold} | " + " | ".join(cells) + f" | {dropped} |")
     return "\n".join(lines) + "\n"
