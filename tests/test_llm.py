@@ -2,6 +2,7 @@ import json
 
 import ollama
 import pytest
+import yaml
 from openai.types.chat import ChatCompletion
 
 from megatron import __main__ as cli
@@ -23,9 +24,11 @@ TICKET = {
     "identifiers": [],
     "summary": "Замятие бумаги в принтере",
     "tags": ["принтер", "замятие"],
-    "department": "hardware",
+    "candidates": ["hardware"],
     "language": "ru",
 }
+
+ROUTED = TICKET | {"department": "hardware"}
 
 
 class FakeClient:
@@ -57,17 +60,17 @@ def test_prompt_lists_departments_and_fallback(departments):
 def test_extract_sends_schema_and_returns_ticket(departments):
     extractor, client = make(departments, json.dumps(TICKET))
     ticket = extractor.extract("С утра не печатает принтер")
-    assert ticket.department == "hardware"
+    assert ticket.candidates == ["hardware"]
     call = client.calls[0]
     assert call["model"] == "test-model"
     assert call["think"] is False
-    assert call["format"]["properties"]["department"]["enum"] == departments.ids
+    assert call["format"]["properties"]["candidates"]["items"]["enum"] == departments.ids
 
 
 def test_invalid_answer_is_retried(departments):
-    bad = json.dumps({**TICKET, "department": "accounting"})
+    bad = json.dumps({**TICKET, "candidates": ["accounting"]})
     extractor, client = make(departments, bad, json.dumps(TICKET))
-    assert extractor.extract("text").department == "hardware"
+    assert extractor.extract("text").candidates == ["hardware"]
     assert len(client.calls) == 2
 
 
@@ -101,7 +104,7 @@ def test_cli_output_saves_ticket_json(tmp_path, monkeypatch, capsys, departments
     extractor, _ = make(departments, json.dumps(TICKET))
     output = tmp_path / "out" / "ticket.json"
     assert run_cli(monkeypatch, departments_path, extractor, "принтер", "-o", str(output)) == 0
-    assert json.loads(output.read_text(encoding="utf-8")) == TICKET
+    assert json.loads(output.read_text(encoding="utf-8")) == ROUTED
     assert '"department"' not in capsys.readouterr().out
 
 
@@ -116,7 +119,7 @@ def test_cli_output_file_mode_writes_json_lines(
     assert run_cli(monkeypatch, departments_path, extractor, *argv) == 1
     first, second = (json.loads(line) for line in output.read_text(encoding="utf-8").splitlines())
     assert first["request"] == "принтер не печатает"
-    assert first["ticket"] == TICKET
+    assert first["ticket"] == ROUTED
     assert "seconds" in first
     assert second["request"] == "VPN drops"
     assert "error" in second
@@ -160,17 +163,17 @@ def make_openai(departments, *answers: str | None) -> tuple[OpenAIExtractor, Fak
 
 def test_openai_sends_strict_schema(departments):
     extractor, create = make_openai(departments, json.dumps(TICKET))
-    assert extractor.extract("С утра не печатает принтер").department == "hardware"
+    assert extractor.extract("С утра не печатает принтер").candidates == ["hardware"]
     response_format = create.calls[0]["response_format"]
     assert response_format["json_schema"]["strict"] is True
     schema = response_format["json_schema"]["schema"]
-    assert schema["properties"]["department"]["enum"] == departments.ids
+    assert schema["properties"]["candidates"]["items"]["enum"] == departments.ids
     assert extractor.endpoint == "https://api.openai.com/v1"
 
 
 def test_openai_refusal_is_retried(departments):
     extractor, create = make_openai(departments, None, json.dumps(TICKET))
-    assert extractor.extract("text").department == "hardware"
+    assert extractor.extract("text").candidates == ["hardware"]
     assert len(create.calls) == 2
 
 
@@ -264,7 +267,7 @@ def test_multi_line_jsonl_request_with_other_languages_and_no_load(
         "identifiers": ["INV-2041", "k.weber"],
         "summary": "Doppelte Abbuchung",
         "tags": ["Rechnung", "Abbuchung"],
-        "department": "billing",
+        "candidates": ["billing"],
         "language": "de",
     }
     extractor, client = make(queues, json.dumps(answer))
@@ -283,3 +286,27 @@ def test_extract_keeps_only_quoted_identifiers(departments):
     answer = {**TICKET, "identifiers": ["a.smirnova", "ticket123"]}
     extractor, _ = make(departments, json.dumps(answer))
     assert extractor.extract("Не могу войти под логином a.smirnova").identifiers == ["a.smirnova"]
+
+
+def test_extract_drops_fallback_next_to_a_real_department(departments):
+    answer = {**TICKET, "candidates": ["general", "security"]}
+    extractor, _ = make(departments, json.dumps(answer))
+    assert extractor.extract("Письмо от «директора» со ссылкой").candidates == ["security"]
+
+
+def test_cli_routes_a_busy_best_fit_to_the_next_candidate(
+    tmp_path, monkeypatch, capsys, departments
+):
+    raw = departments.model_dump()
+    for d in raw["departments"]:
+        d["open_tickets"] = {"hardware": d["capacity"], "software": 0}.get(d["id"], 0)
+    config_path = tmp_path / "departments.yaml"
+    config_path.write_text(yaml.safe_dump(raw, allow_unicode=True), encoding="utf-8")
+    requests = tmp_path / "requests.jsonl"
+    write_jsonl(requests, {"text": "принтер не печатает", "expected": "hardware"})
+    answer = {**TICKET, "candidates": ["hardware", "software"]}
+    extractor, _ = make(departments, json.dumps(answer))
+    assert run_cli(monkeypatch, config_path, extractor, "--file", str(requests)) == 0
+    out = capsys.readouterr().out
+    assert "→ software (best fit hardware is busy)" in out
+    assert "expected hardware ✓" in out

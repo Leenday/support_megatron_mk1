@@ -14,7 +14,7 @@ Free-text support request (RU/EN) → validated JSON ticket (who, where, when, w
 
 ## Layout
 
-- `src/megatron/` — the package (src layout): `settings.py` (.env), `departments.py` (config loader), `ticket.py` (ticket schema), `prompt.py`, `inputs.py` (request files: .txt or .jsonl with `text`/`expected`), `llm.py` (`Extractor`: schema-constrained output + retry; `OllamaExtractor`, `OpenAIExtractor`, picked by `LLM_BACKEND`), `__main__.py` (CLI, `--file`).
+- `src/megatron/` — the package (src layout): `settings.py` (.env), `departments.py` (config loader), `ticket.py` (ticket schema: the model returns ranked `candidates`, routing adds `department`), `routing.py` (weighted score over the candidates), `prompt.py`, `inputs.py` (request files: .txt or .jsonl with `text`/`expected`), `llm.py` (`Extractor`: schema-constrained output + retry; `OllamaExtractor`, `OpenAIExtractor`, picked by `LLM_BACKEND`), `__main__.py` (CLI, `--file`).
 - `config/departments.yaml` — departments and routing weights; the ticket's `department` enum is built from it.
 - `data/` — demo requests; `data/local/` — real requests and datasets, never committed (git-ignored + pre-commit hook).
 - `tests/` — pytest, no network calls; `tests/data/queues.yaml` — dataset-style config (en/de, no load).

@@ -83,3 +83,13 @@ def test_language_codes_are_iso_639_1(departments):
     raw["languages"] = ["ru", "English"]
     with pytest.raises(ValidationError, match="ISO 639-1"):
         DepartmentsConfig.model_validate(raw)
+
+
+@pytest.mark.parametrize(
+    "rank_match", [[], [0.6, 1.0], [1.0, 1.0], [1.5, 0.5], [1.0, 0.0]], ids=str
+)
+def test_rank_match_must_decrease_within_0_1(departments, rank_match):
+    raw = _raw(departments)
+    raw["routing"]["rank_match"] = rank_match
+    with pytest.raises(ValidationError):
+        DepartmentsConfig.model_validate(raw)

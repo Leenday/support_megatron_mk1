@@ -18,7 +18,12 @@ from pydantic import ValidationError
 from megatron.departments import DepartmentsConfig
 from megatron.prompt import build_system_prompt
 from megatron.settings import Settings
-from megatron.ticket import Ticket, build_ticket_model, keep_quoted_identifiers
+from megatron.ticket import (
+    Ticket,
+    build_ticket_model,
+    keep_fallback_alone,
+    keep_quoted_identifiers,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -39,6 +44,7 @@ class Extractor(ABC):
     def __init__(self, config: DepartmentsConfig, model: str, endpoint: str, max_retries: int):
         self.ticket_model = build_ticket_model(config)
         self.system_prompt = build_system_prompt(config)
+        self.fallback = config.fallback.id
         self.model = model
         self.endpoint = endpoint
         self.max_retries = max_retries
@@ -60,7 +66,8 @@ class Extractor(ABC):
             except ValidationError as e:
                 logger.warning("attempt %d: invalid ticket from %s: %s", attempt, self.model, e)
             else:
-                return keep_quoted_identifiers(ticket, text)
+                ticket = keep_quoted_identifiers(ticket, text)
+                return keep_fallback_alone(ticket, self.fallback)
         raise ExtractionError(f"{self.model} returned no valid ticket after {attempt} attempts")
 
 
