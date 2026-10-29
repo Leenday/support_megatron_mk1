@@ -29,7 +29,13 @@ from megatron.evaluation import (
     tfidf_baseline,
 )
 from megatron.inputs import Request, load_requests
-from megatron.llm import BackendError, ExtractionError, Extractor, build_extractor
+from megatron.llm import (
+    BackendError,
+    ExtractionError,
+    Extractor,
+    add_llm_arguments,
+    build_extractor,
+)
 from megatron.routing import route
 from megatron.settings import Settings
 from megatron.testset import load_gold
@@ -44,6 +50,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--run", action="store_true", help="run the configured backend on test.jsonl first"
     )
+    add_llm_arguments(parser)
     parser.add_argument("--limit", type=int, help="with --run: only the first N test requests")
     parser.add_argument(
         "--results",
@@ -110,7 +117,7 @@ def main(argv: list[str] | None = None) -> int:
     gold = load_gold(gold_path) if gold_path.exists() else []
 
     if args.run:
-        settings = Settings()
+        settings = Settings().with_llm(args.backend, args.model)
         config = load_departments(settings.departments_path)
         unknown = sorted({r.expected for r in test if r.expected} - set(config.ids))
         if unknown:

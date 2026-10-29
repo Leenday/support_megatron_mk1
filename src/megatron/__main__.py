@@ -4,6 +4,7 @@ megatron "request text"
 megatron --file requests.txt     # one request per line
 megatron --file requests.jsonl   # {"text": ..., "expected": <department>} per line
 megatron ... -o out/result.json  # save instead of printing (JSON Lines with --file)
+megatron --backend openai --model gpt-5.4-nano "text"   # instead of LLM_BACKEND / *_MODEL
 """
 
 import argparse
@@ -17,7 +18,7 @@ from typing import Any
 from megatron import __version__
 from megatron.departments import load_departments
 from megatron.inputs import Request, RequestFileError, load_requests
-from megatron.llm import BackendError, ExtractionError, build_extractor
+from megatron.llm import BackendError, ExtractionError, add_llm_arguments, build_extractor
 from megatron.routing import route
 from megatron.settings import Settings
 
@@ -35,6 +36,7 @@ def build_parser() -> argparse.ArgumentParser:
         type=Path,
         help="requests: .txt with one per line, or .jsonl with a `text` (and `expected`) key",
     )
+    add_llm_arguments(parser)
     parser.add_argument(
         "-o",
         "--output",
@@ -70,7 +72,7 @@ def main(argv: list[str] | None = None) -> int:
         return 0
 
     logging.basicConfig(level=logging.WARNING, format="%(levelname)s %(name)s: %(message)s")
-    settings = Settings()
+    settings = Settings().with_llm(args.backend, args.model)
     config = load_departments(settings.departments_path)
     unknown = sorted({r.expected for r in requests if r.expected} - set(config.ids))
     if unknown:

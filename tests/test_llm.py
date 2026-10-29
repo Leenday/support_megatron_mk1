@@ -319,3 +319,20 @@ def test_extract_detailed_reports_attempts_and_dropped_identifiers(departments):
     assert extraction.attempts == 2
     assert extraction.dropped_identifiers == ["user123"]
     assert extraction.ticket.identifiers == ["a.smirnova"]
+
+
+def test_cli_backend_and_model_flags_override_the_environment(
+    monkeypatch, departments, departments_path
+):
+    monkeypatch.setenv("LLM_BACKEND", "ollama")
+    extractor, _ = make(departments, json.dumps(TICKET))
+    seen = []
+
+    def build(config, settings):
+        seen.append(settings)
+        return extractor
+
+    monkeypatch.setattr(cli, "build_extractor", build)
+    monkeypatch.setenv("DEPARTMENTS_PATH", str(departments_path))
+    assert cli.main(["--backend", "openai", "--model", "gpt-5.4-nano", "принтер"]) == 0
+    assert (seen[0].llm_backend, seen[0].openai_model) == ("openai", "gpt-5.4-nano")
