@@ -1,12 +1,13 @@
 # Megatron-mk1
 
-Free-text support request (RU/EN) → validated JSON ticket (who, where, when, what, summary, tags, department, language) → routed to the best-fitting, least-loaded department. Iteration 1 = console app; iteration 2 = Django service. Plan and issues: README.md, GitHub issues #1–#23.
+Free-text support request (RU/EN) → validated JSON ticket (who, where, when, what, summary, tags, department, language) → routed to the best-fitting, least-loaded department. Iteration 1 = console app; iteration 2 = Django service. Plan and issues: README.md, GitHub issues.
 
 ## Commands
 
 - `uv sync` — create `.venv` and install everything (dev group included)
 - `uv run pytest` — tests
 - `uv run ruff check --fix . && uv run ruff format .` — lint and format
+- `uv run ty check` · `uv run deptry .` — types, dependencies (`uv run pre-commit run --all-files` runs everything)
 - `uv run pre-commit install --hook-type pre-commit --hook-type commit-msg` — once per clone
 - `uv run megatron "text"` — CLI
 - `docker compose run --rm demo` (data/demo_requests.txt → tickets) · `docker compose run --rm megatron "text"` · `docker compose run --rm tests`
@@ -16,7 +17,7 @@ Free-text support request (RU/EN) → validated JSON ticket (who, where, when, w
 - `src/megatron/` — the package (src layout): `settings.py` (.env), `departments.py` (config loader), `ticket.py` (ticket schema), `prompt.py`, `llm.py` (Ollama adapter: schema-constrained output + retry), `__main__.py` (CLI, `--file`).
 - `config/departments.yaml` — departments and routing weights; the ticket's `department` enum is built from it.
 - `tests/` — pytest, no network calls.
-- `.github/workflows/ci.yml` — GitHub Actions: ruff, pytest (3.12, 3.13), Docker build.
+- `.github/workflows/ci.yml` — GitHub Actions: ruff, ty, deptry, pytest (3.12, 3.13), Docker build. `pr-title.yml` — PR title into `develop` must be a Conventional Commit.
 - `compose.yaml`, `Dockerfile` — containers. Ollama is the `ollama` compose service on CPU with `qwen3:1.7b` (qwen3:8b does not fit the Docker VM); `ollama-pull` downloads the model. Another Ollama: `OLLAMA_BASE_URL_DOCKER` + `--no-deps`.
 
 ## Rules

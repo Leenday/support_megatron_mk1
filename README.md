@@ -34,7 +34,7 @@ docker compose run --rm tests                # pytest in a container
 
 The first run starts Ollama and downloads the model. Docker on macOS has no GPU access, so each request takes tens of seconds to a minute on CPU. For a faster model server (native Ollama or a remote one) set `OLLAMA_BASE_URL_DOCKER` in `.env` and add `--no-deps`. Locally without Docker: `uv run megatron "текст"` with `OLLAMA_BASE_URL`.
 
-**CI.** GitHub Actions ([.github/workflows/ci.yml](.github/workflows/ci.yml)) runs ruff, pytest on Python 3.12 and 3.13, and a Docker build on every push and pull request. New PRs are announced in the project topic of the team's Telegram group ([.github/workflows/pr-telegram.yml](.github/workflows/pr-telegram.yml)).
+**CI.** GitHub Actions ([.github/workflows/ci.yml](.github/workflows/ci.yml)) runs ruff, the ty type checker, deptry (unused and missing dependencies), pytest on Python 3.12 and 3.13, and a Docker build on every push and pull request; [pr-title.yml](.github/workflows/pr-title.yml) checks that a PR title into `develop` is a Conventional Commit. The same checks run locally in the pre-commit hooks. New PRs are announced in the project topic of the team's Telegram group ([.github/workflows/pr-telegram.yml](.github/workflows/pr-telegram.yml)).
 
 **Workflow.** `develop` is the default branch. Each change: issue → branch `feature/<issue>-<slug>` from `develop` → PR into `develop` (template: `Closes #N`, demo recording) → *Squash and merge* after CI is green. `develop` and `main` are protected (PR + CI required). At the end of an iteration a `Release v0.X.0` PR merges `develop` into `main` with a merge commit and is tagged. Commit messages and PR titles follow [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/). Details: [.claude/skills/git-workflow/SKILL.md](.claude/skills/git-workflow/SKILL.md).
 
@@ -65,6 +65,7 @@ gantt
     Evaluation script and TF-IDF baseline [12] :t12, 2026-10-27, 2026-11-04
     CLI text in, JSON ticket out [13] :t13, 2026-10-29, 2026-11-02
     Model comparison and results table [14] :crit, t14, 2026-11-02, 2026-11-06
+    Quality gates type checking, dependency check, PR title check [28] :t28, 2026-10-28, 2026-10-30
     Console MVP done :milestone, m1, 2026-11-06, 0d
     section 2 · Service
     Django project, data models and load-aware routing [15] :t15, 2026-11-07, 2026-11-13
@@ -97,6 +98,7 @@ gantt
 | [#12](https://github.com/Leenday/support_megatron_mk1/issues/12) | Evaluation script and TF-IDF baseline | 2026-10-27 | 2026-11-04 | Daniil |  |
 | [#13](https://github.com/Leenday/support_megatron_mk1/issues/13) | CLI: text in, JSON ticket out | 2026-10-29 | 2026-11-02 | Denis |  |
 | [#14](https://github.com/Leenday/support_megatron_mk1/issues/14) | Model comparison and results table | 2026-11-02 | 2026-11-06 | Denis |  |
+| [#28](https://github.com/Leenday/support_megatron_mk1/issues/28) | Quality gates: type checking, dependency check, PR title check | 2026-10-28 | 2026-10-30 | Denis |  |
 | [#15](https://github.com/Leenday/support_megatron_mk1/issues/15) | Django project, data models and load-aware routing | 2026-11-07 | 2026-11-13 | Roman |  |
 | [#16](https://github.com/Leenday/support_megatron_mk1/issues/16) | Django admin: users, roles, departments, all tickets | 2026-11-13 | 2026-11-19 | Roman |  |
 | [#17](https://github.com/Leenday/support_megatron_mk1/issues/17) | Request form connected to the pipeline | 2026-11-07 | 2026-11-14 | Denis |  |
