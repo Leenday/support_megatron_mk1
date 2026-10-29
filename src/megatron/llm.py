@@ -6,6 +6,7 @@ and the request is retried if validation still fails. Adapters differ only in ho
 the model (`Extractor.complete`); the backend is picked by `LLM_BACKEND`.
 """
 
+import argparse
 import logging
 from abc import ABC, abstractmethod
 from collections.abc import Callable
@@ -174,3 +175,13 @@ def build_extractor(config: DepartmentsConfig, settings: Settings) -> Extractor:
             raise NotImplementedError(
                 f"LLM backend {settings.llm_backend!r} is not implemented yet"
             )
+
+
+def add_llm_arguments(parser: argparse.ArgumentParser) -> None:
+    """--backend and --model: pick the model for one run without editing .env."""
+    parser.add_argument(
+        "--backend", choices=["ollama", "openai"], help="LLM backend (default: LLM_BACKEND)"
+    )
+    parser.add_argument(
+        "--model", help="model of the backend (default: OLLAMA_MODEL or OPENAI_MODEL)"
+    )

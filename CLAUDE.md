@@ -9,7 +9,7 @@ Free-text support request (RU/EN) → validated JSON ticket (who, where, when, w
 - `uv run ruff check --fix . && uv run ruff format .` — lint and format
 - `uv run ty check` · `uv run deptry .` — types, dependencies (`uv run pre-commit run --all-files` runs everything)
 - `uv run pre-commit install --hook-type pre-commit --hook-type commit-msg` — once per clone
-- `uv run megatron "text"` — CLI (`--file requests.txt`, `-o out/result.json`; JSON Lines with `--file`)
+- `uv run megatron "text"` — CLI (`--file requests.txt`, `-o out/result.json`; JSON Lines with `--file`; `--backend openai --model gpt-5.4-nano` override `.env`, also in `megatron-eval`)
 - `uv run megatron-testset export.csv --text subject,body --label queue --out data/local/en` — test set from a ticket export: dev/test JSONL + `gold.yaml` draft (README "Test sets")
 - `uv run megatron-eval data/local/en --run` — run the backend on `test.jsonl` (resumable) and report departments, fields on gold, baselines (majority, TF-IDF) with bootstrap ranges → `out/eval/<set>/report.md`; without `--run` only the report. Docker: `docker compose run --rm eval ...`
 - `docker compose run --rm demo` (data/demo_requests.jsonl → tickets, ✓/✗ against `expected`) · `docker compose run --rm megatron "text"` · `docker compose run --rm tests`
