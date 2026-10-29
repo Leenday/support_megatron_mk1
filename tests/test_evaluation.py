@@ -20,6 +20,7 @@ from megatron.evaluation import (
 )
 from megatron.inputs import Request
 from megatron.llm import OllamaExtractor
+from megatron.prompt import PROMPT_VERSION
 from megatron.settings import Settings
 from megatron.testset import GoldTicket, write_gold
 from megatron.ticket import RoutedTicket
@@ -264,3 +265,27 @@ def test_cli_rejects_labels_missing_from_the_config(tmp_path, monkeypatch, depar
     monkeypatch.setenv("DEPARTMENTS_PATH", str(departments_path))
     write_set(tmp_path / "set", [{"id": 1, "text": "x", "expected": "billing"}], [])
     assert eval_cli.main([str(tmp_path / "set"), "--run", "--out", str(tmp_path / "e")]) == 2
+
+
+def test_cli_dev_part_uses_dev_gold_and_no_baselines(
+    tmp_path, monkeypatch, departments, departments_path
+):
+    extractor = OllamaExtractor(
+        departments,
+        Settings(_env_file=None, ollama_model="tiny:1b"),
+        client=FakeClient(TICKET | {"candidates": ["hardware"]}),
+    )
+    monkeypatch.setattr(eval_cli, "build_extractor", lambda config, settings: extractor)
+    monkeypatch.setenv("DEPARTMENTS_PATH", str(departments_path))
+    write_set(tmp_path / "set", [{"id": 1, "text": "printer PRN-305", "expected": "hardware"}], [])
+    write_gold(tmp_path / "set" / "gold-dev.yaml", [GOLD])
+    out = tmp_path / "eval"
+    args = [str(tmp_path / "set"), "--part", "dev", "--run", "--name", "prompt-v9"]
+    assert eval_cli.main([*args, "--out", str(out), "--rounds", "10"]) == 0
+
+    [result] = load_results(out / "prompt-v9.jsonl")
+    assert (result.model, result.prompt) == ("tiny:1b", PROMPT_VERSION)
+    report = (out / "report.md").read_text(encoding="utf-8")
+    assert "## set-dev: department" in report
+    assert "majority" not in report
+    assert "| prompt-v9 | 1 | " in report  # fields scored on gold-dev.yaml

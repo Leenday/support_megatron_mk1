@@ -22,12 +22,16 @@ class Ticket(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    who: str | None = Field(description="Who reports the problem or is affected; null if unknown")
+    who: str | None = Field(
+        description="Person, client, account or organisation the request is about or that "
+        "reports it, with its ID if given; null if unknown"
+    )
     where: str | None = Field(
-        description="Place, system, service or channel where the problem is; null if unknown"
+        description="System, service, channel or place of the problem in the request's words; "
+        "null if unknown"
     )
     when: str | None = Field(description="When it happened, as stated; null if unknown")
-    what: str = Field(description="What is wrong, in one or two sentences")
+    what: str = Field(description="What is wrong, in one short sentence")
     identifiers: list[str] = Field(
         description="Codes copied verbatim from the request: phone numbers, message, order or "
         "ticket IDs, account names, logins. Not names, places or problem words; empty if none"
