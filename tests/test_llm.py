@@ -2,9 +2,16 @@ import json
 
 import ollama
 import pytest
+from openai.types.chat import ChatCompletion
 
 from megatron import __main__ as cli
-from megatron.llm import ExtractionError, OllamaExtractor
+from megatron.llm import (
+    BackendError,
+    ExtractionError,
+    OllamaExtractor,
+    OpenAIExtractor,
+    build_extractor,
+)
 from megatron.prompt import build_system_prompt
 from megatron.settings import Settings
 
@@ -121,3 +128,82 @@ def test_cli_output_not_written_when_single_request_fails(
     output = tmp_path / "ticket.json"
     assert run_cli(monkeypatch, departments_path, extractor, "text", "-o", str(output)) == 1
     assert not output.exists()
+
+
+class FakeCreate:
+    """Stands in for `openai.OpenAI().chat.completions.create`."""
+
+    def __init__(self, *answers: str | None) -> None:
+        self.answers = list(answers)
+        self.calls: list[dict] = []
+
+    def __call__(self, **kwargs) -> ChatCompletion:
+        self.calls.append(kwargs)
+        message = {"role": "assistant", "content": self.answers.pop(0)}
+        return ChatCompletion.model_validate(
+            {
+                "id": "c1",
+                "object": "chat.completion",
+                "created": 0,
+                "model": kwargs["model"],
+                "choices": [{"index": 0, "finish_reason": "stop", "message": message}],
+            }
+        )
+
+
+def make_openai(departments, *answers: str | None) -> tuple[OpenAIExtractor, FakeCreate]:
+    create = FakeCreate(*answers)
+    settings = Settings(_env_file=None, openai_model="test-model")
+    return OpenAIExtractor(departments, settings, create=create), create
+
+
+def test_openai_sends_strict_schema(departments):
+    extractor, create = make_openai(departments, json.dumps(TICKET))
+    assert extractor.extract("С утра не печатает принтер").department == "hardware"
+    response_format = create.calls[0]["response_format"]
+    assert response_format["json_schema"]["strict"] is True
+    schema = response_format["json_schema"]["schema"]
+    assert schema["properties"]["department"]["enum"] == departments.ids
+    assert extractor.endpoint == "https://api.openai.com/v1"
+
+
+def test_openai_refusal_is_retried(departments):
+    extractor, create = make_openai(departments, None, json.dumps(TICKET))
+    assert extractor.extract("text").department == "hardware"
+    assert len(create.calls) == 2
+
+
+@pytest.mark.parametrize("key", [None, ""])
+def test_openai_needs_a_key(departments, key):
+    settings = Settings(_env_file=None, llm_backend="openai", openai_api_key=key)
+    with pytest.raises(ValueError, match="OPENAI_API_KEY"):
+        build_extractor(departments, settings)
+
+
+def test_openai_empty_base_url_means_openai(departments):
+    settings = Settings(_env_file=None, openai_api_key="sk-test", openai_base_url="")
+    assert OpenAIExtractor(departments, settings).endpoint == "https://api.openai.com/v1"
+
+
+def test_build_extractor_picks_backend(departments):
+    settings = Settings(_env_file=None, llm_backend="openai", openai_api_key="sk-test")
+    assert isinstance(build_extractor(departments, settings), OpenAIExtractor)
+    settings = Settings(_env_file=None, llm_backend="ollama")
+    assert isinstance(build_extractor(departments, settings), OllamaExtractor)
+
+
+class UnreachableClient:
+    def chat(self, **kwargs) -> ollama.ChatResponse:
+        raise ConnectionError("Failed to connect to Ollama")
+
+
+def test_backend_error_stops_the_run(tmp_path, monkeypatch, capsys, departments, departments_path):
+    extractor = OllamaExtractor(departments, Settings(_env_file=None), client=UnreachableClient())
+    requests = tmp_path / "requests.txt"
+    requests.write_text("one\ntwo\n", encoding="utf-8")
+    assert run_cli(monkeypatch, departments_path, extractor, "--file", str(requests)) == 1
+    out = capsys.readouterr().out
+    assert "error: Ollama at" in out
+    assert "> two" not in out
+    with pytest.raises(BackendError):
+        extractor.extract("text")
