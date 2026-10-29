@@ -81,3 +81,43 @@ def test_cli_file_mode(tmp_path, monkeypatch, capsys, departments, departments_p
     assert "=== 2/2 ===" in out
     assert "> VPN drops" in out
     assert '"department": "hardware"' in out
+
+
+def run_cli(monkeypatch, departments_path, extractor, *argv: str) -> int:
+    monkeypatch.setattr(cli, "build_extractor", lambda config, settings: extractor)
+    monkeypatch.setenv("DEPARTMENTS_PATH", str(departments_path))
+    return cli.main(list(argv))
+
+
+def test_cli_output_saves_ticket_json(tmp_path, monkeypatch, capsys, departments, departments_path):
+    extractor, _ = make(departments, json.dumps(TICKET))
+    output = tmp_path / "out" / "ticket.json"
+    assert run_cli(monkeypatch, departments_path, extractor, "принтер", "-o", str(output)) == 0
+    assert json.loads(output.read_text(encoding="utf-8")) == TICKET
+    assert '"department"' not in capsys.readouterr().out
+
+
+def test_cli_output_file_mode_writes_json_lines(
+    tmp_path, monkeypatch, departments, departments_path
+):
+    requests = tmp_path / "requests.txt"
+    requests.write_text("принтер не печатает\nVPN drops\n", encoding="utf-8")
+    extractor, _ = make(departments, json.dumps(TICKET), "bad", "bad", "bad")
+    output = tmp_path / "results.jsonl"
+    argv = ["--file", str(requests), "-o", str(output)]
+    assert run_cli(monkeypatch, departments_path, extractor, *argv) == 1
+    first, second = (json.loads(line) for line in output.read_text(encoding="utf-8").splitlines())
+    assert first["request"] == "принтер не печатает"
+    assert first["ticket"] == TICKET
+    assert "seconds" in first
+    assert second["request"] == "VPN drops"
+    assert "error" in second
+
+
+def test_cli_output_not_written_when_single_request_fails(
+    tmp_path, monkeypatch, departments, departments_path
+):
+    extractor, _ = make(departments, "bad", "bad", "bad")
+    output = tmp_path / "ticket.json"
+    assert run_cli(monkeypatch, departments_path, extractor, "text", "-o", str(output)) == 1
+    assert not output.exists()

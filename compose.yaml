@@ -2,6 +2,7 @@
 #
 #   docker compose run --rm demo              # run data/demo_requests.txt (starts Ollama, pulls the model)
 #   docker compose run --rm megatron "text"   # one request
+#   docker compose run --rm demo -o out/demo.jsonl   # save results to ./out (JSON Lines)
 #   docker compose run --rm tests             # pytest
 #
 # Ollama runs in Docker on CPU (no GPU in Docker on macOS), so the default model is the
@@ -22,6 +23,7 @@ x-app: &app
   volumes:
     - ./config:/app/config:ro
     - ./data:/app/data:ro
+    - ./out:/app/out  # -o out/<file>: results land in ./out on the host
   extra_hosts:
     - "host.docker.internal:host-gateway"
   depends_on:
@@ -56,7 +58,8 @@ services:
 
   demo:
     <<: *app
-    command: ["--file", "data/demo_requests.txt"]
+    # In the entrypoint, not `command`, so extra args (e.g. -o out/demo.jsonl) are appended.
+    entrypoint: ["megatron", "--file", "data/demo_requests.txt"]
 
   tests:
     build:
