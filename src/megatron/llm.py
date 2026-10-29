@@ -13,7 +13,7 @@ from typing import Any, Protocol
 
 import ollama
 import openai
-from pydantic import ValidationError
+from pydantic import BaseModel, Field, ValidationError
 
 from megatron.departments import DepartmentsConfig
 from megatron.prompt import build_system_prompt
@@ -38,6 +38,16 @@ class BackendError(RuntimeError):
     """The model server cannot be used (unreachable, wrong key, unknown model)."""
 
 
+class Extraction(BaseModel):
+    """A ticket with what it took to get it, for evaluation (#12)."""
+
+    ticket: Ticket
+    attempts: int
+    dropped_identifiers: list[str] = Field(
+        description="identifiers the model gave that are not in the request text"
+    )
+
+
 class Extractor(ABC):
     """Prompt, schema, validation and retry; subclasses only call their model."""
 
@@ -54,6 +64,9 @@ class Extractor(ABC):
         """Send the chat with the schema as the output format; return the answer text."""
 
     def extract(self, text: str) -> Ticket:
+        return self.extract_detailed(text).ticket
+
+    def extract_detailed(self, text: str) -> Extraction:
         messages = [
             {"role": "system", "content": self.system_prompt},
             {"role": "user", "content": text},
@@ -66,8 +79,15 @@ class Extractor(ABC):
             except ValidationError as e:
                 logger.warning("attempt %d: invalid ticket from %s: %s", attempt, self.model, e)
             else:
-                ticket = keep_quoted_identifiers(ticket, text)
-                return keep_fallback_alone(ticket, self.fallback)
+                quoted = keep_quoted_identifiers(ticket, text)
+                dropped = [i for i in ticket.identifiers if i not in quoted.identifiers]
+                if dropped:
+                    logger.info("dropped identifiers not in the request: %s", dropped)
+                return Extraction(
+                    ticket=keep_fallback_alone(quoted, self.fallback),
+                    attempts=attempt,
+                    dropped_identifiers=dropped,
+                )
         raise ExtractionError(f"{self.model} returned no valid ticket after {attempt} attempts")
 
 

@@ -90,7 +90,7 @@ def main(argv: list[str] | None = None) -> int:
         record: dict[str, Any] = {k: v for k, v in fields.items() if v is not None}
         start = time.perf_counter()
         try:
-            ticket = extractor.extract(request.text)
+            extraction = extractor.extract_detailed(request.text)
         except ExtractionError as e:
             failed += 1
             print(f"error: {e}")
@@ -102,7 +102,7 @@ def main(argv: list[str] | None = None) -> int:
             print(f"error: {e}")
             break
         seconds = round(time.perf_counter() - start, 1)
-        ticket = route(ticket, config)
+        ticket = route(extraction.ticket, config)
         if args.output is None:
             print(ticket.model_dump_json(indent=2))
         best_fit = ticket.candidates[0]
@@ -115,7 +115,15 @@ def main(argv: list[str] | None = None) -> int:
             correct += hit
             verdict = f" · expected {request.expected} {'✓' if hit else '✗'}"
         print(f"→ {ticket.department}{moved} · {seconds:.1f} s{verdict}")
-        results.append(record | {"ticket": ticket.model_dump(), "seconds": seconds})
+        results.append(
+            record
+            | {
+                "ticket": ticket.model_dump(),
+                "seconds": seconds,
+                "attempts": extraction.attempts,
+                "dropped_identifiers": extraction.dropped_identifiers,
+            }
+        )
 
     labelled = sum(1 for r in requests if r.expected)
     if labelled:
