@@ -61,6 +61,8 @@ DEPARTMENTS_PATH=config/queues_en.yaml docker compose run --rm eval data/local/e
 uv run megatron-eval data/local/en                # report only, from the saved results
 ```
 
+The models × metrics table of iteration 1, the choice of model and the target values: [docs/results.md](docs/results.md).
+
 Prompt tuning uses only the dev part, so the test numbers stay honest: `--part dev` scores `dev.jsonl` against `gold-dev.yaml` (a small gold subset of dev; no baselines, since they are trained on dev) into `out/eval/<set>-dev/`, and `--name` names the run, e.g. `--name gpt-v3` for a prompt variant. Every result records the model and `PROMPT_VERSION` ([src/megatron/prompt.py](src/megatron/prompt.py)).
 
 **Routing.** The model lists 1–3 candidate departments, best fit first. Each candidate gets `score = w_match · match + w_load · (1 − load)`, where `match` is 1.0 / 0.6 / 0.3 by rank (`routing` in the config), and the ticket goes to the highest score. Only candidates are scored, so a department the model did not list never gets the ticket, and the fallback department counts only as the best fit; without load the best fit wins, with load a nearly full best fit can lose to a free second candidate.

@@ -20,6 +20,7 @@ Free-text support request (RU/EN) → validated JSON ticket (who, where, when, w
 - `config/departments.yaml` — departments and routing weights; the ticket's `candidates` enum is built from it.
 - `config/queues_en.yaml` — queues of the public dataset Tobi-Bueck (English test set).
 - `data/` — demo requests; `data/local/` — real requests and datasets, never committed (git-ignored + pre-commit hook).
+- `docs/results.md` — models × metrics table, choice of model (gpt-5.4-mini, prompt v3) and target values; update it after every new evaluation run (aggregate numbers only).
 - `tests/` — pytest, no network calls; `tests/data/queues.yaml` — dataset-style config (en/de, no load).
 - `.github/workflows/ci.yml` — GitHub Actions: ruff, ty, deptry, pytest (3.12, 3.13), Docker build. `pr-title.yml` — PR title into `develop` must be a Conventional Commit.
 - `compose.yaml`, `Dockerfile` — containers. Ollama is the `ollama` compose service on CPU with `qwen3:1.7b` (qwen3:8b does not fit the Docker VM); `ollama-pull` downloads the model. Another Ollama: `OLLAMA_BASE_URL_DOCKER` + `--no-deps`.
