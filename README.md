@@ -92,28 +92,33 @@ gantt
     section 1 · Console MVP
     Repository skeleton and dev setup [5] :done, t5, 2026-10-17, 2026-10-20
     Ticket schema and department config [6] :done, t6, 2026-10-17, 2026-10-22
-    Test set 50-100 requests in Russian and English [7] :t7, 2026-10-17, 2026-10-29
-    LLM adapter local Qwen3 (Ollama) + GigaChat backup [8] :t8, 2026-10-20, 2026-10-29
-    Prompt with department descriptions [9] :t9, 2026-10-22, 2026-10-29
-    Routing weighted score [10] :t10, 2026-10-23, 2026-10-31
-    Validation and retry [11] :t11, 2026-10-27, 2026-10-31
-    Evaluation script and TF-IDF baseline [12] :t12, 2026-10-27, 2026-11-04
-    CLI text in, JSON ticket out [13] :t13, 2026-10-29, 2026-11-02
-    Model comparison and results table [14] :crit, t14, 2026-11-02, 2026-11-06
-    Quality gates type checking, dependency check, PR title check [28] :t28, 2026-10-28, 2026-10-30
+    Test set 50-100 requests in Russian and English [7] :done, t7, 2026-10-17, 2026-10-29
+    LLM adapter local Qwen3 (Ollama) + GigaChat backup [8] :done, t8, 2026-10-20, 2026-10-29
+    Prompt with department descriptions [9] :done, t9, 2026-10-22, 2026-10-29
+    Routing weighted score [10] :done, t10, 2026-10-23, 2026-10-31
+    Validation and retry [11] :done, t11, 2026-10-27, 2026-10-31
+    Evaluation script and TF-IDF baseline [12] :done, t12, 2026-10-27, 2026-11-04
+    CLI text in, JSON ticket out [13] :done, t13, 2026-10-29, 2026-11-02
+    Model comparison and results table [14] :done, crit, t14, 2026-11-02, 2026-11-06
+    Quality gates type checking, dependency check, PR title check [28] :done, t28, 2026-10-28, 2026-10-30
+    Generalize for other domains and datasets [31] :done, t31, 2026-10-29, 2026-11-01
     Console MVP done :milestone, m1, 2026-11-06, 0d
     section 2 · Service
-    Django project, data models and load-aware routing [15] :t15, 2026-11-07, 2026-11-13
-    Django admin users, roles, departments, all tickets [16] :t16, 2026-11-13, 2026-11-19
-    Request form connected to the pipeline [17] :t17, 2026-11-07, 2026-11-14
-    Specialist dashboard take tickets and change statuses [18] :t18, 2026-11-12, 2026-11-24
-    Translation RU ↔ EN (if time allows) [23] :t23, 2026-11-16, 2026-11-24
+    Django project, data models, roles and load-aware routing [15] :t15, 2026-11-07, 2026-11-11
+    Django admin users, roles, departments, all tickets [16] :t16, 2026-11-14, 2026-11-18
+    Request form connected to the pipeline [17] :t17, 2026-11-12, 2026-11-16
+    Specialist dashboard take tickets and change statuses [18] :t18, 2026-11-16, 2026-11-24
     Iteration 2 testing [19] :t19, 2026-11-23, 2026-11-27
+    JSON API with OpenAPI (Swagger) docs [42] :t42, 2026-11-10, 2026-11-13
+    Measure triage time manual vs automatic [43] :t43, 2026-11-20, 2026-11-27
     Service done :milestone, m2, 2026-11-27, 0d
     section 3 · Final
+    Translation RU ↔ EN (if time allows) [23] :t23, 2026-11-28, 2026-12-05
     Voice input with Whisper (optional) [20] :t20, 2026-11-28, 2026-12-05
     Final metrics and report [21] :t21, 2026-11-28, 2026-12-10
     Final presentation [22] :crit, t22, 2026-12-07, 2026-12-14
+    Local models on a GPU qwen3 4b / 8b [44] :t44, 2026-11-28, 2026-12-05
+    Design note split a request across departments [45] :t45, 2026-11-28, 2026-12-07
     Final done :milestone, m3, 2026-12-14, 0d
 ```
 
@@ -125,24 +130,29 @@ gantt
 | [#4](https://github.com/Leenday/support_megatron_mk1/issues/4) | Calendar plan (waterfall Gantt chart) | 2026-10-14 | 2026-10-16 | Denis | ✅ |
 | [#5](https://github.com/Leenday/support_megatron_mk1/issues/5) | Repository skeleton and dev setup | 2026-10-17 | 2026-10-20 | Denis | ✅ |
 | [#6](https://github.com/Leenday/support_megatron_mk1/issues/6) | Ticket schema and department config | 2026-10-17 | 2026-10-22 | Roman | ✅ |
-| [#7](https://github.com/Leenday/support_megatron_mk1/issues/7) | Test set: 50-100 requests in Russian and English | 2026-10-17 | 2026-10-29 | Daniil |  |
-| [#8](https://github.com/Leenday/support_megatron_mk1/issues/8) | LLM adapter: local Qwen3 (Ollama) + GigaChat backup | 2026-10-20 | 2026-10-29 | Denis |  |
-| [#9](https://github.com/Leenday/support_megatron_mk1/issues/9) | Prompt with department descriptions | 2026-10-22 | 2026-10-29 | Denis |  |
-| [#10](https://github.com/Leenday/support_megatron_mk1/issues/10) | Routing: weighted score | 2026-10-23 | 2026-10-31 | Roman |  |
-| [#11](https://github.com/Leenday/support_megatron_mk1/issues/11) | Validation and retry | 2026-10-27 | 2026-10-31 | Roman |  |
-| [#12](https://github.com/Leenday/support_megatron_mk1/issues/12) | Evaluation script and TF-IDF baseline | 2026-10-27 | 2026-11-04 | Daniil |  |
-| [#13](https://github.com/Leenday/support_megatron_mk1/issues/13) | CLI: text in, JSON ticket out | 2026-10-29 | 2026-11-02 | Denis |  |
-| [#14](https://github.com/Leenday/support_megatron_mk1/issues/14) | Model comparison and results table | 2026-11-02 | 2026-11-06 | Denis |  |
-| [#28](https://github.com/Leenday/support_megatron_mk1/issues/28) | Quality gates: type checking, dependency check, PR title check | 2026-10-28 | 2026-10-30 | Denis |  |
-| [#15](https://github.com/Leenday/support_megatron_mk1/issues/15) | Django project, data models and load-aware routing | 2026-11-07 | 2026-11-13 | Roman |  |
-| [#16](https://github.com/Leenday/support_megatron_mk1/issues/16) | Django admin: users, roles, departments, all tickets | 2026-11-13 | 2026-11-19 | Roman |  |
-| [#17](https://github.com/Leenday/support_megatron_mk1/issues/17) | Request form connected to the pipeline | 2026-11-07 | 2026-11-14 | Denis |  |
-| [#18](https://github.com/Leenday/support_megatron_mk1/issues/18) | Specialist dashboard: take tickets and change statuses | 2026-11-12 | 2026-11-24 | Daniil |  |
-| [#23](https://github.com/Leenday/support_megatron_mk1/issues/23) | Translation RU <-> EN (if time allows) | 2026-11-16 | 2026-11-24 | Denis |  |
+| [#7](https://github.com/Leenday/support_megatron_mk1/issues/7) | Test set: 50-100 requests in Russian and English | 2026-10-17 | 2026-10-29 | Daniil | ✅ |
+| [#8](https://github.com/Leenday/support_megatron_mk1/issues/8) | LLM adapter: local Qwen3 (Ollama) + GigaChat backup | 2026-10-20 | 2026-10-29 | Denis | ✅ |
+| [#9](https://github.com/Leenday/support_megatron_mk1/issues/9) | Prompt with department descriptions | 2026-10-22 | 2026-10-29 | Denis | ✅ |
+| [#10](https://github.com/Leenday/support_megatron_mk1/issues/10) | Routing: weighted score | 2026-10-23 | 2026-10-31 | Roman | ✅ |
+| [#11](https://github.com/Leenday/support_megatron_mk1/issues/11) | Validation and retry | 2026-10-27 | 2026-10-31 | Roman | ✅ |
+| [#12](https://github.com/Leenday/support_megatron_mk1/issues/12) | Evaluation script and TF-IDF baseline | 2026-10-27 | 2026-11-04 | Daniil | ✅ |
+| [#13](https://github.com/Leenday/support_megatron_mk1/issues/13) | CLI: text in, JSON ticket out | 2026-10-29 | 2026-11-02 | Denis | ✅ |
+| [#14](https://github.com/Leenday/support_megatron_mk1/issues/14) | Model comparison and results table | 2026-11-02 | 2026-11-06 | Denis | ✅ |
+| [#28](https://github.com/Leenday/support_megatron_mk1/issues/28) | Quality gates: type checking, dependency check, PR title check | 2026-10-28 | 2026-10-30 | Denis | ✅ |
+| [#31](https://github.com/Leenday/support_megatron_mk1/issues/31) | Generalize for other domains and datasets | 2026-10-29 | 2026-11-01 | Denis | ✅ |
+| [#15](https://github.com/Leenday/support_megatron_mk1/issues/15) | Django project, data models, roles and load-aware routing | 2026-11-07 | 2026-11-11 | Roman |  |
+| [#16](https://github.com/Leenday/support_megatron_mk1/issues/16) | Django admin: users, roles, departments, all tickets | 2026-11-14 | 2026-11-18 | Roman |  |
+| [#17](https://github.com/Leenday/support_megatron_mk1/issues/17) | Request form connected to the pipeline | 2026-11-12 | 2026-11-16 | Denis |  |
+| [#18](https://github.com/Leenday/support_megatron_mk1/issues/18) | Specialist dashboard: take tickets and change statuses | 2026-11-16 | 2026-11-24 | Daniil |  |
+| [#23](https://github.com/Leenday/support_megatron_mk1/issues/23) | Translation RU <-> EN (if time allows) | 2026-11-28 | 2026-12-05 | Denis |  |
 | [#19](https://github.com/Leenday/support_megatron_mk1/issues/19) | Iteration 2 testing | 2026-11-23 | 2026-11-27 | All |  |
 | [#20](https://github.com/Leenday/support_megatron_mk1/issues/20) | Voice input with Whisper (optional) | 2026-11-28 | 2026-12-05 | Denis |  |
 | [#21](https://github.com/Leenday/support_megatron_mk1/issues/21) | Final metrics and report | 2026-11-28 | 2026-12-10 | All |  |
 | [#22](https://github.com/Leenday/support_megatron_mk1/issues/22) | Final presentation | 2026-12-07 | 2026-12-14 | All |  |
+| [#42](https://github.com/Leenday/support_megatron_mk1/issues/42) | JSON API with OpenAPI (Swagger) docs | 2026-11-10 | 2026-11-13 | Denis |  |
+| [#43](https://github.com/Leenday/support_megatron_mk1/issues/43) | Measure triage time: manual vs automatic | 2026-11-20 | 2026-11-27 | Denis |  |
+| [#44](https://github.com/Leenday/support_megatron_mk1/issues/44) | Local models on a GPU: qwen3:4b / 8b | 2026-11-28 | 2026-12-05 | Denis |  |
+| [#45](https://github.com/Leenday/support_megatron_mk1/issues/45) | Design note: split a request across departments | 2026-11-28 | 2026-12-07 | Denis |  |
 
 ## Stages
 
@@ -150,7 +160,7 @@ gantt
 |---|---|---|
 | 0 · Initiation and methods review | 2026-10-16 | Idea, first presentation, methods review, impact map, calendar plan. |
 | 1 · Console MVP | 2026-11-06 | Iteration 1: console app, text in -> JSON ticket out; test set and model comparison. |
-| 2 · Service | 2026-11-27 | Iteration 2: Django service: request form, specialist dashboard with statuses, Django admin, load-aware routing, RU/EN translation if time allows. |
-| 3 · Final | 2026-12-14 | Optional voice input, final metrics, report and final presentation. The programme ends in mid-December; exact date to be confirmed. |
+| 2 · Service | 2026-11-27 | Iteration 2: Django service with three roles (requester, specialist, admin): JSON API with OpenAPI docs, request form, specialist dashboard with statuses, Django admin, load-aware routing from the database, measured triage time. |
+| 3 · Final | 2026-12-14 | Final metrics, report and presentation. If time allows: local models on a GPU, RU/EN translation, voice input, splitting a request by department. The programme ends in mid-December; exact date to be confirmed. |
 
 *Dates after 2026-10-16 are planned and may shift; the final date depends on the programme schedule (mid-December).*

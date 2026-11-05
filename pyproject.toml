@@ -1,6 +1,6 @@
 [project]
 name = "megatron"
-version = "0.1.0.dev0"
+version = "0.1.0"
 description = "Megatron-mk1: free-text support request -> validated JSON ticket routed to a department"
 readme = "README.md"
 requires-python = ">=3.12"
