@@ -1,0 +1,26 @@
+# The PR title becomes the squash commit on develop, so it must be a Conventional Commit
+# (types from .claude/skills/git-workflow/SKILL.md). Release PRs into main are exempt.
+name: PR title
+
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened]
+    branches: [develop]
+
+permissions: {}
+
+jobs:
+  pr-title:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check the title
+        env:
+          TITLE: ${{ github.event.pull_request.title }}
+        run: |
+          pattern='^(feat|fix|docs|test|refactor|build|ci|chore)(\([a-z0-9-]+\))?!?: [^ ]'
+          if [[ "$TITLE" =~ $pattern ]]; then
+            echo "OK: $TITLE"
+          else
+            echo "::error title=PR title::Not a Conventional Commit: \"$TITLE\". Expected <type>(<scope>): <summary>, type one of feat fix docs test refactor build ci chore."
+            exit 1
+          fi

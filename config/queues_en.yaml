@@ -1,0 +1,93 @@
+# Queues of the public dataset Tobi-Bueck/customer-support-tickets (CC BY-NC 4.0, synthetic),
+# English part. Ids are the dataset's `queue` labels as `megatron-testset` turns them into ids,
+# so the test set built from it can be checked with:
+#   DEPARTMENTS_PATH=config/queues_en.yaml megatron --file data/local/en/test.jsonl
+# The dataset has no load, so routing takes the model's best fit.
+
+languages: [en]
+
+departments:
+  - id: technical_support
+    name_ru: Техническая поддержка
+    name_en: Technical support
+    description: >-
+      Errors, crashes and malfunctions of the product or service, integration and
+      compatibility problems, troubleshooting help.
+    tags: [error, crash, bug, integration, troubleshooting]
+    language: en
+
+  - id: product_support
+    name_ru: Поддержка продукта
+    name_en: Product support
+    description: >-
+      Questions about using the product and its features, configuration, setup and
+      product-specific issues.
+    tags: [product, feature, setup, configuration, usage]
+    language: en
+
+  - id: customer_service
+    name_ru: Обслуживание клиентов
+    name_en: Customer service
+    description: >-
+      Customer accounts, orders, complaints, data protection questions and other requests
+      about the customer relationship.
+    tags: [account, order, complaint, customer, privacy]
+    language: en
+
+  - id: it_support
+    name_ru: ИТ-поддержка
+    name_en: IT support
+    description: >-
+      Internal IT: devices, networks, access, security incidents and infrastructure of the
+      customer's organisation.
+    tags: [it, device, network, access, security, infrastructure]
+    language: en
+
+  - id: billing_and_payments
+    name_ru: Счета и оплата
+    name_en: Billing and payments
+    description: Invoices, charges, payments, refunds, subscriptions and pricing.
+    tags: [invoice, billing, payment, refund, subscription]
+    language: en
+
+  - id: returns_and_exchanges
+    name_ru: Возвраты и обмен
+    name_en: Returns and exchanges
+    description: Returning, exchanging or replacing purchased products, warranty claims.
+    tags: [return, exchange, replacement, warranty]
+    language: en
+
+  - id: service_outages_and_maintenance
+    name_ru: Сбои и обслуживание сервиса
+    name_en: Service outages and maintenance
+    description: >-
+      Service outages and interruptions affecting many users, planned maintenance and
+      service availability.
+    tags: [outage, downtime, interruption, maintenance, availability]
+    language: en
+
+  - id: sales_and_pre_sales
+    name_ru: Продажи и предпродажа
+    name_en: Sales and pre-sales
+    description: >-
+      Questions before buying: product information, plans, trials, quotes, demos and
+      upgrades.
+    tags: [sales, pricing, trial, quote, demo, upgrade]
+    language: en
+
+  - id: human_resources
+    name_ru: Отдел кадров
+    name_en: Human resources
+    description: Employment, staff, payroll, onboarding and other HR matters.
+    tags: [hr, employee, payroll, onboarding, staff]
+    language: en
+
+  - id: general_inquiry
+    name_ru: Общие вопросы
+    name_en: General inquiry
+    description: >-
+      General questions and requests that are unclear or fit no other queue, such as
+      marketing or business advice.
+    tags: [general, question, other]
+    language: en
+    fallback: true

@@ -1,0 +1,28 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+*.egg-info/
+build/
+dist/
+
+# Tools
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# CLI results (-o out/...)
+out/
+
+# Real requests and downloaded datasets stay on this machine
+data/local/
+
+# Secrets and local settings
+.env
+.claude/settings.local.json
+
+# OS / editors
+.DS_Store
+.idea/
+.vscode/

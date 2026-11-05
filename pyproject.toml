@@ -1,0 +1,60 @@
+[project]
+name = "megatron"
+version = "0.1.0"
+description = "Megatron-mk1: free-text support request -> validated JSON ticket routed to a department"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "ollama>=0.6",
+    "openai>=3.41",
+    "pydantic>=2.11",
+    "pydantic-settings>=2.10",
+    "pyyaml>=6.0",
+    "scikit-learn>=1.7",
+]
+
+[project.scripts]
+megatron = "megatron.__main__:main"
+megatron-testset = "megatron.testset_cli:main"
+megatron-eval = "megatron.eval_cli:main"
+
+[dependency-groups]
+dev = [
+    "deptry==0.25.1",
+    "pre-commit>=4.3",
+    "pytest>=8.4",
+    "ruff>=0.17",
+    "ty==0.0.92",
+]
+
+[build-system]
+requires = ["uv_build>=0.13,<0.14"]
+build-backend = "uv_build"
+
+[tool.pytest.ini_options]
+addopts = ["--import-mode=importlib"]
+testpaths = ["tests"]
+
+[tool.deptry]
+known_first_party = ["megatron"]  # src layout: deptry cannot infer it
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # pyflakes
+    "I",   # isort
+    "B",   # flake8-bugbear
+    "UP",  # pyupgrade
+    "SIM", # flake8-simplify
+    "T20", # no print() outside the CLI
+]
+
+[tool.ruff.lint.per-file-ignores]
+"src/megatron/__main__.py" = ["T20"]
+"src/megatron/testset_cli.py" = ["T20"]
+"src/megatron/eval_cli.py" = ["T20"]

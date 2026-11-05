@@ -1,0 +1,85 @@
+# Iteration 1: request text -> JSON ticket.
+#
+#   docker compose run --rm demo              # run data/demo_requests.jsonl (starts Ollama, pulls the model)
+#   docker compose run --rm megatron "text"   # one request
+#   docker compose run --rm demo -o out/demo.jsonl   # save results to ./out (JSON Lines)
+#   docker compose run --rm tests             # pytest
+#   DEPARTMENTS_PATH=config/queues_en.yaml docker compose run --rm eval data/local/en --run
+#                                             # score the model on a test set (#12)
+#
+# Ollama runs in Docker on CPU (no GPU in Docker on macOS), so the default model is the
+# small qwen3:1.7b (1.4 GB, ~2 GB RAM). Expect tens of seconds to minutes per request.
+# To use a native or remote Ollama instead, set OLLAMA_BASE_URL_DOCKER and run with --no-deps.
+# LLM_BACKEND=openai (key in .env): also --no-deps, Ollama is not needed.
+# Iteration 2 adds `web` (Django) and `db` (Postgres).
+
+x-app: &app
+  build:
+    context: .
+    target: runtime
+  environment:
+    LLM_BACKEND: ${LLM_BACKEND:-ollama}
+    OLLAMA_BASE_URL: ${OLLAMA_BASE_URL_DOCKER:-http://ollama:11434}
+    OLLAMA_MODEL: ${OLLAMA_MODEL:-qwen3:1.7b}
+    OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+    OPENAI_MODEL: ${OPENAI_MODEL:-gpt-5.4-mini}
+    OPENAI_BASE_URL: ${OPENAI_BASE_URL:-}
+    GIGACHAT_CREDENTIALS: ${GIGACHAT_CREDENTIALS:-}
+    DEPARTMENTS_PATH: ${DEPARTMENTS_PATH:-config/departments.yaml}
+  volumes:
+    - ./config:/app/config:ro
+    - ./data:/app/data:ro
+    - ./out:/app/out  # -o out/<file>: results land in ./out on the host
+  extra_hosts:
+    - "host.docker.internal:host-gateway"
+  depends_on:
+    ollama-pull:
+      condition: service_completed_successfully
+
+services:
+  ollama:
+    image: ollama/ollama:0.40.7
+    volumes:
+      - ollama:/root/.ollama
+    environment:
+      OLLAMA_KEEP_ALIVE: ${OLLAMA_KEEP_ALIVE:-30m}
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+  # One-shot: downloads OLLAMA_MODEL into the shared volume (a no-op once it is there).
+  ollama-pull:
+    image: ollama/ollama:0.40.7
+    entrypoint: ["ollama", "pull", "${OLLAMA_MODEL:-qwen3:1.7b}"]
+    environment:
+      OLLAMA_HOST: http://ollama:11434
+    depends_on:
+      ollama:
+        condition: service_healthy
+
+  megatron:
+    <<: *app
+
+  demo:
+    <<: *app
+    # In the entrypoint, not `command`, so extra args (e.g. -o out/demo.jsonl) are appended.
+    entrypoint: ["megatron", "--file", "data/demo_requests.jsonl"]
+
+  eval:
+    <<: *app
+    entrypoint: ["megatron-eval"]
+
+  tests:
+    build:
+      context: .
+      target: dev
+    entrypoint: ["pytest"]
+    volumes:
+      - ./src:/app/src
+      - ./tests:/app/tests
+      - ./config:/app/config:ro
+
+volumes:
+  ollama:

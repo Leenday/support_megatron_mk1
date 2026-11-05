@@ -1,0 +1,26 @@
+# A dataset-style config: support queues instead of departments, English and German,
+# no load and no routing weights.
+languages: [en, de]
+
+departments:
+  - id: technical_support
+    name_ru: Техническая поддержка
+    name_en: Technical support
+    description: Outages, errors and malfunctions of the product or service.
+    tags: [outage, error, bug]
+    language: en
+
+  - id: billing
+    name_ru: Счета и оплата
+    name_en: Billing and payments
+    description: Invoices, payments, refunds and pricing questions.
+    tags: [invoice, payment, refund]
+    language: de
+
+  - id: general_inquiry
+    name_ru: Общие вопросы
+    name_en: General inquiry
+    description: Anything else, or requests that are unclear.
+    tags: [question]
+    language: en
+    fallback: true
