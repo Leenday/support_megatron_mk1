@@ -1,0 +1,11 @@
+{% extends "admin/index.html" %}
+
+{% block content %}
+  {% if can_manage_users %}
+    <nav aria-label="Разделы панели">
+      <a href="{% url 'admin:support_user_changelist' %}">Управление пользователями</a>
+    </nav>
+  {% endif %}
+{% endblock %}
+
+{% block sidebar %}{% endblock %}

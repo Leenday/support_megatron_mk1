@@ -40,9 +40,12 @@ The first run starts Ollama and downloads the model. Docker on macOS has no GPU 
 
 ```bash
 docker compose up web                                    # http://localhost:8000/admin/
-docker compose exec web python web/manage.py createsuperuser
 docker compose exec web python web/manage.py export_departments out/departments.yaml
 ```
+
+The migrations create the initial Admin account (`test@test.test`). Staff sign in by email at
+`/admin/`. Both staff roles can open the home page. The Admin role can create and edit staff
+accounts, change their roles and passwords, and deactivate them.
 
 On the first start `web` migrates the database and imports the departments from `DEPARTMENTS_PATH`. From then on the database is the source of truth: departments are edited in the admin panel, `import_departments <file>` updates them by id (a department missing from the file is deactivated, never deleted), and `export_departments` writes them back as a config for the CLI and the evaluation, with the current load as `open_tickets`. The load used by routing is the department's open tickets (New, In progress) over its capacity. Every request is saved with its contact and extraction log, and a failed one with its error. Staff roles are the groups Specialist and Admin; requesters need no account (an open form with a contact field and a status link, #17). Without Docker: `uv run python web/manage.py migrate` (SQLite in `web/db.sqlite3` when `DATABASE_URL` is empty), then `import_departments config/departments.yaml` and `runserver`.
 

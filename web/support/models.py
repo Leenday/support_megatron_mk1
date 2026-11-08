@@ -12,6 +12,7 @@ from django.contrib.auth.models import AbstractUser
 from django.core.validators import MinValueValidator, RegexValidator
 from django.db import models
 from django.db.models import Q
+from django.db.models.functions import Lower
 
 from megatron.departments import DepartmentsConfig, RoutingWeights
 
@@ -24,7 +25,9 @@ if TYPE_CHECKING:
 
 # Auth groups, created by migration 0002. Requesters have no role and no account: the form is
 # open, and they give a contact and get a status link instead (#17).
-ROLES = ("Specialist", "Admin")
+SPECIALIST_ROLE = "Specialist"
+ADMIN_ROLE = "Admin"
+ROLES = (SPECIALIST_ROLE, ADMIN_ROLE)
 
 
 # Module-level functions: migrations can only serialize importable callables as defaults.
@@ -39,6 +42,13 @@ def default_languages() -> list[str]:
 class User(AbstractUser):
     """Staff of the service; the role is the user's group, one of `ROLES`."""
 
+    class Meta(AbstractUser.Meta):  # ty: ignore[invalid-attribute-override]
+        constraints = [
+            models.UniqueConstraint(
+                Lower("email"), condition=~Q(email=""), name="unique_user_email_ci"
+            )
+        ]
+
     department = models.ForeignKey(
         "Department",
         null=True,
@@ -47,6 +57,12 @@ class User(AbstractUser):
         related_name="specialists",
         help_text="Specialists only: the department whose tickets they work on.",
     )
+
+    def __str__(self) -> str:
+        return self.email or self.username
+
+    def get_short_name(self) -> str:
+        return self.first_name or self.email or self.username
 
 
 class Department(models.Model):

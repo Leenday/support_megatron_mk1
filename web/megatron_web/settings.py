@@ -64,6 +64,7 @@ DATABASES = {
 
 # Swapping the user model later is not supported by Django, so it is custom from the start.
 AUTH_USER_MODEL = "support.User"
+LOGIN_REDIRECT_URL = "admin:index"
 
 AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},
