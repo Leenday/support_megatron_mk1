@@ -22,7 +22,9 @@ if TYPE_CHECKING:
     # Reverse relations, declared for the type checker (Django adds them at runtime).
     from django.db.models.fields.related_descriptors import RelatedManager
 
-ROLES = ("Requester", "Specialist", "Admin")  # auth groups, created by migration 0002
+# Auth groups, created by migration 0002. Requesters have no role and no account: the form is
+# open, and they give a contact and get a status link instead (#17).
+ROLES = ("Specialist", "Admin")
 
 
 # Module-level functions: migrations can only serialize importable callables as defaults.
@@ -35,7 +37,7 @@ def default_languages() -> list[str]:
 
 
 class User(AbstractUser):
-    """The role is the user's group, one of `ROLES`."""
+    """Staff of the service; the role is the user's group, one of `ROLES`."""
 
     department = models.ForeignKey(
         "Department",
@@ -112,13 +114,20 @@ class RoutingSettings(models.Model):
 
 
 class Request(models.Model):
-    """What a requester sent, with the extraction log; kept even when extraction failed."""
+    """What a requester sent, with the extraction log; kept even when extraction failed.
+
+    Requesters need no account: `contact` is how to reach them. `requester` is set only when
+    a logged-in user sends the request.
+    """
 
     tickets: "RelatedManager[Ticket]"
 
     text = models.TextField()
+    contact = models.CharField(
+        max_length=200, blank=True, help_text="E-mail, phone or messenger of the requester."
+    )
     requester = models.ForeignKey(
-        User, null=True, on_delete=models.SET_NULL, related_name="requests"
+        User, null=True, blank=True, on_delete=models.SET_NULL, related_name="requests"
     )
     created_at = models.DateTimeField(auto_now_add=True)
     model = models.CharField(max_length=100, blank=True)

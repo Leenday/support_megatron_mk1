@@ -140,11 +140,13 @@ def test_export_round_trip(imported):
 # --- create_ticket ---------------------------------------------------------------------
 
 
-def test_create_ticket_saves_request_ticket_and_event(imported, django_user_model):
-    user = django_user_model.objects.create_user("requester")
-    request = create_ticket("Не открывается сетевая папка. Петров", user, fixed())
+def test_create_ticket_saves_request_ticket_and_event(imported):
+    request = create_ticket(
+        "Не открывается сетевая папка. Петров", "petrov@example.com", extractor_factory=fixed()
+    )
 
-    assert request.requester == user
+    assert request.contact == "petrov@example.com"
+    assert request.requester is None
     assert (request.model, request.attempts, request.error) == ("fixed", 1, "")
     ticket = request.tickets.get()
     assert ticket.department_id == "network"
@@ -191,8 +193,9 @@ def test_fake_backend_needs_no_model(imported):
 # --- Roles and settings --------------------------------------------------------------------
 
 
-def test_roles_exist():
+def test_staff_roles_exist():
     assert set(Group.objects.values_list("name", flat=True)) >= set(ROLES)
+    assert "Requester" not in ROLES  # requesters need no account
 
 
 def test_secret_key_is_required_without_debug():

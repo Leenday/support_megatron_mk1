@@ -71,6 +71,7 @@ def default_extractor(config: DepartmentsConfig) -> Extractor:
 
 def create_ticket(
     text: str,
+    contact: str = "",
     requester: User | None = None,
     extractor_factory: ExtractorFactory = default_extractor,
 ) -> Request:
@@ -82,7 +83,11 @@ def create_ticket(
     config = departments_config()
     extractor = extractor_factory(config)
     request = Request(
-        text=text, requester=requester, model=extractor.model, prompt_version=PROMPT_VERSION
+        text=text,
+        contact=contact,
+        requester=requester,
+        model=extractor.model,
+        prompt_version=PROMPT_VERSION,
     )
     start = time.perf_counter()
     try:

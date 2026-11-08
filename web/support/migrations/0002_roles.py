@@ -1,8 +1,11 @@
-"""The three roles as auth groups; their permissions come with the views (#16, #17, #18)."""
+"""The staff roles as auth groups; their permissions come with the views (#16, #18).
+
+Requesters have no role: the request form is open (#17).
+"""
 
 from django.db import migrations
 
-ROLES = ("Requester", "Specialist", "Admin")  # a copy: migrations must not import models
+ROLES = ("Specialist", "Admin")  # a copy: migrations must not import models
 
 
 def create_roles(apps, schema_editor):
