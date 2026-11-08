@@ -9,6 +9,7 @@ from megatron import __main__ as cli
 from megatron.llm import (
     BackendError,
     ExtractionError,
+    FakeExtractor,
     OllamaExtractor,
     OpenAIExtractor,
     build_extractor,
@@ -194,6 +195,17 @@ def test_build_extractor_picks_backend(departments):
     assert isinstance(build_extractor(departments, settings), OpenAIExtractor)
     settings = Settings(_env_file=None, llm_backend="ollama")
     assert isinstance(build_extractor(departments, settings), OllamaExtractor)
+    settings = Settings(_env_file=None, llm_backend="fake")
+    assert isinstance(build_extractor(departments, settings), FakeExtractor)
+
+
+def test_fake_extractor_matches_keywords_or_falls_back(departments):
+    fake = FakeExtractor(departments)
+    ticket = fake.extract("Не работает VPN, сеть пропала")
+    assert ticket.candidates == ["network"]
+    assert ticket.language == "ru"
+    assert fake.extract("Hello there").candidates == [departments.fallback.id]
+    assert fake.extract("Hello there").language == departments.languages[0]
 
 
 class UnreachableClient:
