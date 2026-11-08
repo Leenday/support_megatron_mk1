@@ -26,3 +26,7 @@ data/local/
 .DS_Store
 .idea/
 .vscode/
+
+# Django development database and collected static files
+web/db.sqlite3
+web/staticfiles/
