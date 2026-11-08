@@ -116,7 +116,7 @@ gantt
     section 2 · Service
     Django project, data models, roles and load-aware routing [15] :t15, 2026-11-07, 2026-11-11
     Django admin users, roles, departments, all tickets [16] :t16, 2026-11-14, 2026-11-18
-    Request form connected to the pipeline [17] :t17, 2026-11-12, 2026-11-16
+    Open request form and status by link [17] :t17, 2026-11-12, 2026-11-16
     Specialist dashboard take tickets and change statuses [18] :t18, 2026-11-16, 2026-11-24
     Iteration 2 testing [19] :t19, 2026-11-23, 2026-11-27
     JSON API with OpenAPI (Swagger) docs [42] :t42, 2026-11-10, 2026-11-13
@@ -155,7 +155,7 @@ gantt
 | [#31](https://github.com/Leenday/support_megatron_mk1/issues/31) | Generalize for other domains and datasets | 2026-10-29 | 2026-11-01 | Denis | ✅ |
 | [#15](https://github.com/Leenday/support_megatron_mk1/issues/15) | Django project, data models, roles and load-aware routing | 2026-11-07 | 2026-11-11 | Denis |  |
 | [#16](https://github.com/Leenday/support_megatron_mk1/issues/16) | Django admin: users, roles, departments, all tickets | 2026-11-14 | 2026-11-18 | Roman |  |
-| [#17](https://github.com/Leenday/support_megatron_mk1/issues/17) | Request form connected to the pipeline | 2026-11-12 | 2026-11-16 | Denis |  |
+| [#17](https://github.com/Leenday/support_megatron_mk1/issues/17) | Open request form and status by link | 2026-11-12 | 2026-11-16 | Denis |  |
 | [#18](https://github.com/Leenday/support_megatron_mk1/issues/18) | Specialist dashboard: take tickets and change statuses | 2026-11-16 | 2026-11-24 | Daniil |  |
 | [#23](https://github.com/Leenday/support_megatron_mk1/issues/23) | Translation RU <-> EN (if time allows) | 2026-11-28 | 2026-12-05 | Denis |  |
 | [#19](https://github.com/Leenday/support_megatron_mk1/issues/19) | Iteration 2 testing | 2026-11-23 | 2026-11-27 | All |  |
@@ -176,7 +176,7 @@ gantt
 |---|---|---|
 | 0 · Initiation and methods review | 2026-10-16 | Idea, first presentation, methods review, impact map, calendar plan. |
 | 1 · Console MVP | 2026-11-06 | Iteration 1: console app, text in -> JSON ticket out; test set and model comparison. |
-| 2 · Service | 2026-11-27 | Iteration 2: Django service with three roles (requester, specialist, admin): JSON API with OpenAPI docs, request form, specialist dashboard with statuses, Django admin, load-aware routing from the database, measured triage time. |
+| 2 · Service | 2026-11-27 | Iteration 2: Django service with an open request form (no account for requesters) and two staff roles (specialist, admin): JSON API with OpenAPI docs, request form, specialist dashboard with statuses, Django admin, load-aware routing from the database, measured triage time. |
 | 3 · Final | 2026-12-14 | Final metrics, report and presentation. If time allows: local models on a GPU, RU/EN translation, voice input, splitting a request by department. The programme ends in mid-December; exact date to be confirmed. |
 
 *Dates after 2026-10-16 are planned and may shift; the final date depends on the programme schedule (mid-December).*
