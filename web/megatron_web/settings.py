@@ -29,6 +29,7 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
+    "django.middleware.locale.LocaleMiddleware",  # after sessions, before common
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
@@ -71,7 +72,10 @@ AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.NumericPasswordValidator"},
 ]
 
+# The interface follows the browser's language (LocaleMiddleware); Russian otherwise.
 LANGUAGE_CODE = "ru"
+LANGUAGES = [("ru", "Русский"), ("en", "English")]
+LOCALE_PATHS = [BASE_DIR / "locale"]  # our own strings: makemessages -l ru (#16, #17)
 TIME_ZONE = "Europe/Moscow"
 USE_I18N = True
 USE_TZ = True

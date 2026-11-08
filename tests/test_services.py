@@ -205,3 +205,9 @@ def test_secret_key_is_required_without_debug():
         assert "support.E001" in [m.id for m in run_checks()]
     with override_settings(DEBUG=False, SECRET_KEY="x" * 50):
         assert "support.E001" not in [m.id for m in run_checks()]
+
+
+@pytest.mark.parametrize(("accept", "expected"), [("en-US,en;q=0.9", "Log in"), ("", "Войти")])
+def test_interface_follows_the_browser_language(client, accept, expected):
+    response = client.get("/admin/login/", headers={"accept-language": accept})
+    assert expected in response.content.decode()
