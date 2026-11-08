@@ -85,6 +85,9 @@ STATIC_ROOT = BASE_DIR / "staticfiles"
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
+# The request form is open (requesters have no account): submissions per client address.
+REQUEST_FORM_RATE = (5, 60)  # (requests, seconds)
+
 LOGGING = {
     "version": 1,
     "disable_existing_loggers": False,

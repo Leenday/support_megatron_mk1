@@ -6,12 +6,14 @@ keeps the original text and the extraction log; it has one or more tickets (one 
 when a request is split by department, #45; today always one).
 """
 
+import secrets
 from typing import TYPE_CHECKING
 
 from django.contrib.auth.models import AbstractUser
 from django.core.validators import MinValueValidator, RegexValidator
 from django.db import models
 from django.db.models import Q
+from django.utils.translation import gettext_lazy as _
 
 from megatron.departments import DepartmentsConfig, RoutingWeights
 
@@ -34,6 +36,11 @@ def default_rank_match() -> list[float]:
 
 def default_languages() -> list[str]:
     return list(DEFAULT_LANGUAGES)
+
+
+def new_access_code() -> str:
+    """Secret part of a request's status link, so request numbers cannot be enumerated."""
+    return secrets.token_urlsafe(12)
 
 
 class User(AbstractUser):
@@ -87,6 +94,10 @@ class Department(models.Model):
     def __str__(self) -> str:
         return self.name_en
 
+    def name(self, language: str) -> str:
+        """Display name in the interface language: Russian for "ru", English otherwise."""
+        return self.name_ru if language == "ru" else self.name_en
+
 
 class RoutingSettings(models.Model):
     """One row: the routing weights and ticket languages of `config/departments.yaml`."""
@@ -136,6 +147,12 @@ class Request(models.Model):
     dropped_identifiers = models.JSONField(default=list)
     seconds = models.FloatField(null=True)
     error = models.TextField(blank=True)
+    access_code = models.CharField(
+        max_length=32,
+        default=new_access_code,
+        editable=False,
+        help_text="Secret part of the requester's status link.",
+    )
 
     class Meta:
         ordering = ["-created_at"]
@@ -146,9 +163,9 @@ class Request(models.Model):
 
 class Ticket(models.Model):
     class Status(models.TextChoices):
-        NEW = "new", "New"
-        IN_PROGRESS = "in_progress", "In progress"
-        DONE = "done", "Done"
+        NEW = "new", _("New")
+        IN_PROGRESS = "in_progress", _("In progress")
+        DONE = "done", _("Done")
 
     OPEN = (Status.NEW, Status.IN_PROGRESS)  # count towards the department's load
 

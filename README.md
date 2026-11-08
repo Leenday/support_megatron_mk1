@@ -39,12 +39,12 @@ The first run starts Ollama and downloads the model. Docker on macOS has no GPU 
 **Web service (iteration 2, in progress).** A Django project in [web/](web/) calls the `megatron` package; Postgres runs as the compose service `db`. Set `DJANGO_SECRET_KEY` in `.env` (or `DJANGO_DEBUG=true` for development), then:
 
 ```bash
-docker compose up web                                    # http://localhost:8000/admin/
+docker compose up web                                    # http://localhost:8000/ (form), /admin/
 docker compose exec web python web/manage.py createsuperuser
 docker compose exec web python web/manage.py export_departments out/departments.yaml
 ```
 
-On the first start `web` migrates the database and imports the departments from `DEPARTMENTS_PATH`. From then on the database is the source of truth: departments are edited in the admin panel, `import_departments <file>` updates them by id (a department missing from the file is deactivated, never deleted), and `export_departments` writes them back as a config for the CLI and the evaluation, with the current load as `open_tickets`. The load used by routing is the department's open tickets (New, In progress) over its capacity. Every request is saved with its contact and extraction log, and a failed one with its error. Staff roles are the groups Specialist and Admin; requesters need no account (an open form with a contact field and a status link, #17). Without Docker: `uv run python web/manage.py migrate` (SQLite in `web/db.sqlite3` when `DATABASE_URL` is empty), then `import_departments config/departments.yaml` and `runserver`.
+On the first start `web` migrates the database and imports the departments from `DEPARTMENTS_PATH`. From then on the database is the source of truth: departments are edited in the admin panel, `import_departments <file>` updates them by id (a department missing from the file is deactivated, never deleted), and `export_departments` writes them back as a config for the CLI and the evaluation, with the current load as `open_tickets`. The load used by routing is the department's open tickets (New, In progress) over its capacity. Every request is saved with its contact and extraction log, and a failed one with its error. Staff roles are the groups Specialist and Admin. Requesters need no account: the form at `/` takes the text and a contact, makes the ticket while the page waits and redirects to a status page at `/status/<request>-<code>/`, where the random code keeps other people's requests unreadable; submissions are limited per address (`REQUEST_FORM_RATE`). The pages follow the browser's language (RU / EN switch in the header); our strings are translated in `web/locale/ru/` (`cd web && python manage.py makemessages -l ru --no-location`, then `compilemessages`; the compiled `.mo` is committed, since the image has no gettext). Without Docker: `uv run python web/manage.py migrate` (SQLite in `web/db.sqlite3` when `DATABASE_URL` is empty), then `import_departments config/departments.yaml` and `runserver`.
 
 **Departments and data.** [config/departments.yaml](config/departments.yaml) lists the routing targets (departments, queues, support lines or categories): `languages` (ticket languages, default `[ru, en]`) and optional load (`capacity`, `open_tickets`: for all departments or none). Another domain or dataset is another config file, selected with `DEPARTMENTS_PATH`. `--file` reads `.txt` (one request per line) or `.jsonl`, one `{"id": ..., "text": "...", "expected": "<department id>"}` per line: the text may span several lines, other keys are ignored, and with `expected` the CLI marks each answer ✓/✗ against the model's best-fit department and prints `department correct: N/M`. Real requests and downloaded datasets go to `data/local/`: git and Docker ignore it, a pre-commit hook refuses to commit it, and compose sees it as `data/local/` (`docker compose run --rm megatron --file data/local/requests.jsonl`).
 
@@ -114,7 +114,7 @@ gantt
     Generalize for other domains and datasets [31] :done, t31, 2026-10-29, 2026-11-01
     Console MVP done :milestone, m1, 2026-11-06, 0d
     section 2 · Service
-    Django project, data models, roles and load-aware routing [15] :t15, 2026-11-07, 2026-11-11
+    Django project, data models, roles and load-aware routing [15] :done, t15, 2026-11-07, 2026-11-11
     Django admin users, roles, departments, all tickets [16] :t16, 2026-11-14, 2026-11-18
     Open request form and status by link [17] :t17, 2026-11-12, 2026-11-16
     Specialist dashboard take tickets and change statuses [18] :t18, 2026-11-16, 2026-11-24
@@ -153,10 +153,10 @@ gantt
 | [#14](https://github.com/Leenday/support_megatron_mk1/issues/14) | Model comparison and results table | 2026-11-02 | 2026-11-06 | Denis | ✅ |
 | [#28](https://github.com/Leenday/support_megatron_mk1/issues/28) | Quality gates: type checking, dependency check, PR title check | 2026-10-28 | 2026-10-30 | Denis | ✅ |
 | [#31](https://github.com/Leenday/support_megatron_mk1/issues/31) | Generalize for other domains and datasets | 2026-10-29 | 2026-11-01 | Denis | ✅ |
-| [#15](https://github.com/Leenday/support_megatron_mk1/issues/15) | Django project, data models, roles and load-aware routing | 2026-11-07 | 2026-11-11 | Denis |  |
+| [#15](https://github.com/Leenday/support_megatron_mk1/issues/15) | Django project, data models, roles and load-aware routing | 2026-11-07 | 2026-11-11 | Denis | ✅ |
 | [#16](https://github.com/Leenday/support_megatron_mk1/issues/16) | Django admin: users, roles, departments, all tickets | 2026-11-14 | 2026-11-18 | Roman |  |
 | [#17](https://github.com/Leenday/support_megatron_mk1/issues/17) | Open request form and status by link | 2026-11-12 | 2026-11-16 | Denis |  |
-| [#18](https://github.com/Leenday/support_megatron_mk1/issues/18) | Specialist dashboard: take tickets and change statuses | 2026-11-16 | 2026-11-24 | Daniil |  |
+| [#18](https://github.com/Leenday/support_megatron_mk1/issues/18) | Specialist dashboard: take tickets and change statuses | 2026-11-16 | 2026-11-24 | Denis |  |
 | [#23](https://github.com/Leenday/support_megatron_mk1/issues/23) | Translation RU <-> EN (if time allows) | 2026-11-28 | 2026-12-05 | Denis |  |
 | [#19](https://github.com/Leenday/support_megatron_mk1/issues/19) | Iteration 2 testing | 2026-11-23 | 2026-11-27 | All |  |
 | [#20](https://github.com/Leenday/support_megatron_mk1/issues/20) | Voice input with Whisper (optional) | 2026-11-28 | 2026-12-05 | Denis |  |
