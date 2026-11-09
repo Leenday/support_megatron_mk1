@@ -12,8 +12,9 @@ from pathlib import Path
 
 import yaml
 from django.db import transaction
-from django.db.models import Count
+from django.db.models import Count, QuerySet
 from django.utils import timezone
+from pydantic import BaseModel, Field
 
 from megatron.departments import Department as DepartmentConfig
 from megatron.departments import DepartmentsConfig, RoutingWeights, load_departments
@@ -21,11 +22,22 @@ from megatron.llm import BackendError, ExtractionError, Extractor, build_extract
 from megatron.prompt import PROMPT_VERSION
 from megatron.routing import route, score_candidates
 from megatron.settings import Settings
+from megatron.ticket import RoutedTicket
 from support.models import Department, Request, RoutingSettings, Ticket, TicketEvent, User
 
 logger = logging.getLogger(__name__)
 
 ExtractorFactory = Callable[[DepartmentsConfig], Extractor]
+
+
+def open_ticket_counts() -> dict[str, int]:
+    """Open tickets (New, In progress) per department id; departments without any are absent."""
+    return dict(
+        Ticket.objects.filter(status__in=Ticket.OPEN)
+        .values("department")
+        .annotate(n=Count("pk"))
+        .values_list("department", "n")
+    )
 
 
 def departments_config() -> DepartmentsConfig:
@@ -35,12 +47,7 @@ def departments_config() -> DepartmentsConfig:
     used only when every active department has a capacity, as in the YAML config.
     """
     departments = list(Department.objects.filter(active=True))
-    open_tickets = dict(
-        Ticket.objects.filter(status__in=Ticket.OPEN)
-        .values("department")
-        .annotate(n=Count("pk"))
-        .values_list("department", "n")
-    )
+    open_tickets = open_ticket_counts()
     with_load = all(d.capacity for d in departments)
     routing = RoutingSettings.load()
     return DepartmentsConfig(
@@ -67,6 +74,55 @@ def departments_config() -> DepartmentsConfig:
 
 def default_extractor(config: DepartmentsConfig) -> Extractor:
     return build_extractor(config, Settings())
+
+
+class ExtractResult(BaseModel):
+    """What the CLI prints for one request: the routed ticket and how it was obtained."""
+
+    model: str = Field(examples=["gpt-5.4-mini"])
+    prompt_version: str = Field(examples=["v3"])
+    ticket: RoutedTicket
+    attempts: int = Field(examples=[1], description="Model calls it took to get a valid ticket")
+    dropped_identifiers: list[str] = Field(
+        examples=[[]], description="Identifiers the model gave that are not in the request text"
+    )
+    seconds: float = Field(examples=[1.4])
+
+
+def extract(text: str, extractor_factory: ExtractorFactory | None = None) -> ExtractResult:
+    """Extract and route without saving anything, exactly as the CLI does.
+
+    Raises `ExtractionError` or `BackendError` like the extractor.
+    """
+    config = departments_config()
+    extractor = (extractor_factory or default_extractor)(config)
+    start = time.perf_counter()
+    extraction = extractor.extract_detailed(text)
+    return ExtractResult(
+        model=extractor.model,
+        prompt_version=PROMPT_VERSION,
+        ticket=route(extraction.ticket, config),
+        attempts=extraction.attempts,
+        dropped_identifiers=extraction.dropped_identifiers,
+        seconds=round(time.perf_counter() - start, 1),
+    )
+
+
+def visible_tickets(user: User) -> QuerySet[Ticket]:
+    """The tickets a user may see: admins all, specialists their department's, others their own.
+
+    "Others" are accounts that send requests through the API, such as an integration.
+    """
+    tickets = Ticket.objects.select_related("department", "assignee", "request")
+    if user.is_superuser or user.has_role("Admin"):
+        return tickets
+    if user.has_role("Specialist"):
+        return (
+            tickets.filter(department_id=user.department_id)
+            if user.department_id
+            else tickets.none()
+        )
+    return tickets.filter(request__requester=user)
 
 
 def create_ticket(
