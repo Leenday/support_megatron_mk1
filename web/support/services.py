@@ -73,7 +73,7 @@ def create_ticket(
     text: str,
     contact: str = "",
     requester: User | None = None,
-    extractor_factory: ExtractorFactory = default_extractor,
+    extractor_factory: ExtractorFactory | None = None,
 ) -> Request:
     """Extract, route and save; returns the request, with its ticket or its error.
 
@@ -81,7 +81,8 @@ def create_ticket(
     outside the transaction: it takes seconds, and nothing is written until it returns.
     """
     config = departments_config()
-    extractor = extractor_factory(config)
+    # Looked up at call time, so tests can replace `default_extractor` for the views too.
+    extractor = (extractor_factory or default_extractor)(config)
     request = Request(
         text=text,
         contact=contact,

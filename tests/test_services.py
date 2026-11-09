@@ -9,6 +9,9 @@ from django.contrib.auth.models import Group
 from django.core.checks import run_checks
 from django.core.management import call_command
 from django.test import override_settings
+
+from megatron.departments import DepartmentsConfig, load_departments
+from megatron.llm import Extractor, FakeExtractor, Messages
 from support.models import ROLES, Department, Request, RoutingSettings, Ticket, TicketEvent
 from support.services import (
     create_ticket,
@@ -16,9 +19,6 @@ from support.services import (
     export_departments,
     import_departments,
 )
-
-from megatron.departments import DepartmentsConfig, load_departments
-from megatron.llm import Extractor, FakeExtractor, Messages
 
 pytestmark = pytest.mark.django_db
 

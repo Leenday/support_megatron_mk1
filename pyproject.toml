@@ -68,6 +68,9 @@ select = [
     "T20", # no print() outside the CLI
 ]
 
+[tool.ruff.lint.isort]
+known-first-party = ["megatron", "megatron_web", "support"]  # web/ is not on ruff's src path
+
 [tool.ruff.lint.per-file-ignores]
 "src/megatron/__main__.py" = ["T20"]
 "src/megatron/testset_cli.py" = ["T20"]
