@@ -73,6 +73,11 @@ AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.NumericPasswordValidator"},
 ]
 
+# Staff log in at /login/ and land on the dashboard; requesters never log in (#17).
+LOGIN_URL = "login"
+LOGIN_REDIRECT_URL = "desk"
+LOGOUT_REDIRECT_URL = "login"
+
 # The interface follows the browser's language (LocaleMiddleware); Russian otherwise.
 LANGUAGE_CODE = "ru"
 LANGUAGES = [("ru", "Русский"), ("en", "English")]
