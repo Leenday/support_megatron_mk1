@@ -1,0 +1,51 @@
+{% extends "support/base.html" %}{% load i18n %}
+{% block title %}{% translate "Dashboard" %}{% endblock %}
+{% block width %}wide{% endblock %}{% block main_width %}wide{% endblock %}
+{% block content %}
+<h1>{% translate "Dashboard" %}{% if department %} · {{ department }}{% endif %}</h1>
+{% if is_specialist and not department %}
+  <p class="notice warn">{% translate "You have no department yet, so the queue is empty. Ask an admin to set it." %}</p>
+{% endif %}
+<div class="tabs">
+  {% for key, label, count in lists %}
+    <a href="?list={{ key }}"{% if key == current %} aria-current="page"{% endif %}>{{ label }}{% if count is not None %} <span class="count">{{ count }}</span>{% endif %}</a>
+  {% endfor %}
+</div>
+<div class="card">
+  <form class="filters" method="get">
+    <input type="hidden" name="list" value="{{ current }}">
+    {% if current != "queue" %}
+      <div><label for="{{ form.status.id_for_label }}">{{ form.status.label }}</label>{{ form.status }}</div>
+    {% endif %}
+    <div><label for="{{ form.tag.id_for_label }}">{{ form.tag.label }}</label>{{ form.tag }}</div>
+    <div><label for="{{ form.since.id_for_label }}">{{ form.since.label }}</label>{{ form.since }}</div>
+    <div><label for="{{ form.until.id_for_label }}">{{ form.until.label }}</label>{{ form.until }}</div>
+    <button type="submit">{% translate "Show" %}</button>
+  </form>
+  {% if rows %}
+    <div class="table-scroll">
+    <table>
+      <thead>
+        <tr><th>№</th><th>{% translate "Ticket" %}</th><th>{% translate "Department" %}</th><th>{% translate "Status" %}</th><th>{% translate "Age" %}</th><th>{% translate "Specialist" %}</th><th></th></tr>
+      </thead>
+      <tbody>
+        {% for ticket, department_name in rows %}
+          <tr>
+            <td><a href="{% url 'desk_ticket' ticket.pk %}">#{{ ticket.pk }}</a></td>
+            <td><a href="{% url 'desk_ticket' ticket.pk %}">{{ ticket.summary }}</a><br>{% for tag in ticket.tags %}<span class="tag">{{ tag }}</span>{% endfor %}</td>
+            <td>{{ department_name }}</td>
+            <td>{{ ticket.get_status_display }}</td>
+            <td title="{{ ticket.created_at|date:'SHORT_DATETIME_FORMAT' }}">{{ ticket.created_at|timesince }}</td>
+            <td>{{ ticket.assignee.get_username|default:"—" }}</td>
+            <td>{% if ticket.status == "new" %}<form method="post" action="{% url 'desk_action' ticket.pk 'take' %}">{% csrf_token %}<button>{% translate "Take" %}</button></form>{% endif %}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    </div>
+    {% if more %}<p class="help">{% translate "Only the oldest 200 are shown: narrow the filters." %}</p>{% endif %}
+  {% else %}
+    <p>{% translate "No tickets here." %}</p>
+  {% endif %}
+</div>
+{% endblock %}

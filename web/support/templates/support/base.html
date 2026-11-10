@@ -20,15 +20,13 @@
     .card { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 24px; }
     h1 { font-size: 1.4rem; margin: 0 0 16px; }
     label { display: block; font-weight: 600; margin: 16px 0 4px; }
-    textarea, input[type=text] { width: 100%; padding: 10px; font: inherit; color: var(--text);
+    textarea, input[type=text], input[type=password], select { width: 100%; padding: 10px; font: inherit; color: var(--text);
            background: var(--bg); border: 1px solid var(--line); border-radius: 6px; }
     .help { color: var(--muted); font-size: 0.9rem; margin: 4px 0 0; }
     .errorlist { color: var(--error); margin: 4px 0 0; padding-left: 18px; }
     button { margin-top: 20px; padding: 10px 20px; font: inherit; font-weight: 600; color: #fff;
              background: var(--accent); border: 0; border-radius: 6px; cursor: pointer; }
     button:disabled { opacity: 0.6; cursor: wait; }
-    .lang button { margin: 0; padding: 4px 10px; font-weight: 400; background: transparent;
-                   color: var(--muted); border: 1px solid var(--line); }
     .lang button[aria-pressed=true] { color: var(--text); border-color: var(--text); }
     .notice { padding: 12px 16px; border-radius: 6px; border: 1px solid; margin-bottom: 16px; }
     .notice.ok { color: var(--ok); } .notice.warn { color: var(--warn); }
@@ -38,11 +36,42 @@
     th { color: var(--muted); font-weight: 600; font-size: 0.9rem; }
     .link { word-break: break-all; }
     a { color: var(--accent); }
+    main.wide, header.wide { max-width: 1100px; }
+    nav { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+    nav form { display: inline; }
+    nav button.plain, .lang button { margin: 0; padding: 4px 10px; font-weight: 400;
+                   background: transparent; color: var(--muted); border: 1px solid var(--line); }
+    .tabs { display: flex; gap: 4px; margin-bottom: 16px; flex-wrap: wrap; }
+    .tabs a { padding: 6px 12px; border-radius: 6px; text-decoration: none; color: var(--text); }
+    .tabs a[aria-current=page] { background: var(--card); border: 1px solid var(--line); font-weight: 600; }
+    .count { color: var(--muted); font-weight: 400; }
+    .filters { display: flex; gap: 12px; align-items: end; flex-wrap: wrap; margin-bottom: 12px; }
+    .filters label { margin: 0 0 4px; font-size: 0.9rem; }
+    .filters input, .filters select { width: auto; padding: 6px; font: inherit; color: var(--text);
+                   background: var(--bg); border: 1px solid var(--line); border-radius: 6px; }
+    .filters button, td form button { margin: 0; padding: 6px 14px; }
+    .tag { display: inline-block; padding: 0 6px; margin: 2px 2px 0 0; border: 1px solid var(--line);
+           border-radius: 4px; font-size: 0.85rem; color: var(--muted); }
+    .table-scroll { overflow-x: auto; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; }
+    .card + .card, .grid + .card, .card + .grid, .grid + .grid { margin-top: 16px; }
+    .grid > .card { margin-top: 0; }
+    dl { display: grid; grid-template-columns: max-content 1fr; gap: 6px 16px; margin: 0; }
+    dt { color: var(--muted); } dd { margin: 0; }
+    .original { white-space: pre-wrap; background: var(--bg); padding: 12px; border-radius: 6px; }
+    h2 { font-size: 1.1rem; margin: 0 0 12px; }
+    ul.radio { list-style: none; padding: 0; margin: 0; } ul.radio label { font-weight: 400; margin: 4px 0; }
   </style>
 </head>
 <body>
-  <header>
+  <header class="{% block width %}{% endblock %}">
     <a href="{% url 'request_form' %}">Megatron-mk1 · {% translate "Support" %}</a>
+    <nav>
+    {% if user.is_authenticated %}
+      <a href="{% url 'desk' %}">{% translate "Dashboard" %}</a>
+      <span class="help">{{ user.get_username }}</span>
+      <form action="{% url 'logout' %}" method="post">{% csrf_token %}<button class="plain">{% translate "Log out" %}</button></form>
+    {% endif %}
     <form class="lang" action="{% url 'set_language' %}" method="post">
       {% csrf_token %}<input name="next" type="hidden" value="{{ request.get_full_path }}">
       {% get_available_languages as languages %}
@@ -50,7 +79,11 @@
         <button name="language" value="{{ code }}" aria-pressed="{% if code == LANGUAGE_CODE %}true{% else %}false{% endif %}">{{ code|upper }}</button>
       {% endfor %}
     </form>
+    </nav>
   </header>
-  <main>{% block content %}{% endblock %}</main>
+  <main class="{% block main_width %}{% endblock %}">
+    {% for message in messages %}<p class="notice {% if message.level_tag == 'error' %}error{% else %}ok{% endif %}">{{ message }}</p>{% endfor %}
+    {% block content %}{% endblock %}
+  </main>
 </body>
 </html>
