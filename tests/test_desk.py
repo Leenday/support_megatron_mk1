@@ -252,3 +252,8 @@ def test_actions_need_post(client, ivan):
     url = reverse("desk_action", kwargs={"pk": ticket.pk, "action": "take"})
     assert client.get(url).status_code == 405
     assert act(client, ticket, "delete").status_code == 404
+
+
+def test_admin_sets_the_specialists_department(admin_client):
+    page = admin_client.get(reverse("admin:support_user_add")).content.decode()
+    assert 'name="department"' in page

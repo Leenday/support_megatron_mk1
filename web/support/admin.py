@@ -5,7 +5,16 @@ from django.contrib.auth.admin import UserAdmin
 
 from support.models import ApiToken, Department, Request, RoutingSettings, Ticket, TicketEvent, User
 
-admin.site.register(User, UserAdmin)
+
+class StaffAdmin(UserAdmin):
+    """Django's user admin plus the department, which a specialist needs for the queue (#18)."""
+
+    fieldsets = (*(UserAdmin.fieldsets or ()), ("Department", {"fields": ("department",)}))
+    add_fieldsets = (*UserAdmin.add_fieldsets, ("Department", {"fields": ("department",)}))
+    list_display = ("username", "email", "first_name", "last_name", "is_staff", "department")
+
+
+admin.site.register(User, StaffAdmin)
 admin.site.register([Department, RoutingSettings, Request, Ticket, TicketEvent])
 
 
