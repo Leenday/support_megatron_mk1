@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-11-10 16:14+0300\n"
+"POT-Creation-Date: 2026-11-10 18:13+0300\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: Russian\n"
@@ -127,6 +127,9 @@ msgstr "Нет, она должна была уйти в:"
 msgid "Department"
 msgstr "Отдел"
 
+msgid "Choose a department"
+msgstr "Выберите отдел"
+
 msgid "Choose the department that should have got it."
 msgstr "Выберите отдел, в который она должна была уйти."
 
@@ -218,8 +221,7 @@ msgstr "Вернуть"
 
 #, python-format
 msgid "Not for this department? The ticket goes to “%(department)s” as New."
-msgstr ""
-"Заявка не для этого отдела? Заявка уйдёт в отдел «%(department)s» как новая."
+msgstr "Не для этого отдела? Заявка уйдёт в отдел «%(department)s» как новая."
 
 msgid "Every department has had this ticket; an admin can reassign it."
 msgstr ""

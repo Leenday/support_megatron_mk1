@@ -90,6 +90,7 @@ class CloseForm(forms.Form):
     )
     department = DepartmentField(
         label=_("Department"),
+        empty_label=_("Choose a department"),
         queryset=Department.objects.filter(active=True),
         required=False,
     )

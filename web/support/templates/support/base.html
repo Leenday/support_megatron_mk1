@@ -54,7 +54,8 @@
            border-radius: 4px; font-size: 0.85rem; color: var(--muted); }
     .table-scroll { overflow-x: auto; }
     .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; }
-    .card + .card, .grid + .card, .card + .grid { margin-top: 16px; }
+    .card + .card, .grid + .card, .card + .grid, .grid + .grid { margin-top: 16px; }
+    .grid > .card { margin-top: 0; }
     dl { display: grid; grid-template-columns: max-content 1fr; gap: 6px 16px; margin: 0; }
     dt { color: var(--muted); } dd { margin: 0; }
     .original { white-space: pre-wrap; background: var(--bg); padding: 12px; border-radius: 6px; }
