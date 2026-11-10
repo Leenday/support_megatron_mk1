@@ -6,6 +6,7 @@ keeps the original text and the extraction log; it has one or more tickets (one 
 when a request is split by department, #45; today always one).
 """
 
+import hashlib
 import secrets
 from typing import TYPE_CHECKING
 
@@ -54,6 +55,9 @@ class User(AbstractUser):
         related_name="specialists",
         help_text="Specialists only: the department whose tickets they work on.",
     )
+
+    def has_role(self, role: str) -> bool:
+        return self.groups.filter(name=role).exists()
 
 
 class Department(models.Model):
@@ -220,3 +224,41 @@ class TicketEvent(models.Model):
 
     def __str__(self) -> str:
         return f"{self.kind} #{self.ticket_id}"
+
+
+class ApiToken(models.Model):
+    """Personal API token for scripts and integrations (#42); the browser uses the session.
+
+    Only a hash is stored, so a copy of the database gives no working tokens; the token
+    itself is shown once, by `manage.py create_api_token`. Revoking = deleting the row.
+    """
+
+    PREFIX = "mk1_"
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="api_tokens")
+    name = models.CharField(max_length=100, help_text="What the token is for, e.g. the script.")
+    key_hash = models.CharField(max_length=64, unique=True, editable=False)
+    hint = models.CharField(
+        max_length=12, editable=False, help_text="Start of the token, to tell tokens apart."
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    last_used_at = models.DateTimeField(null=True, blank=True, editable=False)
+
+    class Meta:
+        ordering = ["-created_at"]
+        verbose_name = "API token"
+
+    def __str__(self) -> str:
+        return f"{self.hint}… ({self.name})"
+
+    @staticmethod
+    def hash(key: str) -> str:
+        # A token is 32 random bytes, so a plain SHA-256 is enough (no salt or slow hash).
+        return hashlib.sha256(key.encode()).hexdigest()
+
+    @classmethod
+    def issue(cls, user: User, name: str) -> tuple["ApiToken", str]:
+        """Create a token; returns the row and the token, which is not stored anywhere."""
+        key = cls.PREFIX + secrets.token_urlsafe(32)
+        token = cls.objects.create(user=user, name=name, key_hash=cls.hash(key), hint=key[:12])
+        return token, key
