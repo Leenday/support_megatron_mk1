@@ -21,6 +21,7 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.pipeline import make_pipeline
 
 from megatron.inputs import Request
+from megatron.rules import apply_rules
 from megatron.testset import GoldTicket
 from megatron.ticket import RoutedTicket, Ticket
 
@@ -49,6 +50,8 @@ class Result(BaseModel):
     seconds: float | None = None
     attempts: int | None = None
     dropped_identifiers: list[str] = []
+    added_identifiers: list[str] = []
+    when_from_rule: str | None = None
 
     @property
     def best_fit(self) -> str | None:
@@ -58,6 +61,32 @@ class Result(BaseModel):
 def load_results(path: Path) -> list[Result]:
     lines = path.read_text(encoding="utf-8").splitlines()
     return [Result.model_validate_json(line) for line in lines if line.strip()]
+
+
+def with_rules(results: Sequence[Result], *, add: bool = False) -> list[Result]:
+    """The same answers with the rules applied: the shape filter, as `Extractor` does now,
+    and with `add` also the additions (missed codes, "when" from a date).
+
+    Results saved before the rules existed are measured with and without them; on newer ones
+    the shape filter changes nothing, since the rules are idempotent.
+    """
+    changed = []
+    for r in results:
+        if r.ticket is None:
+            changed.append(r)
+            continue
+        ticket, log = apply_rules(r.ticket, r.request, add=add)
+        changed.append(
+            r.model_copy(
+                update={
+                    "ticket": ticket,
+                    "dropped_identifiers": r.dropped_identifiers + log.shape_dropped,
+                    "added_identifiers": r.added_identifiers + log.added_identifiers,
+                    "when_from_rule": log.when_from_rule or r.when_from_rule,
+                }
+            )
+        )
+    return changed
 
 
 # --- Matching ------------------------------------------------------------------------------
@@ -235,6 +264,8 @@ class SystemReport(BaseModel):
     field_f1: dict[str, Score | None] = {}
     dropped: int = 0
     tickets_with_dropped: int = 0
+    added: int = 0
+    when_filled: int = 0
     seconds_median: float | None = None
     seconds_p90: float | None = None
 
@@ -283,6 +314,8 @@ def model_report(
         else {},
         dropped=sum(len(r.dropped_identifiers) for r in results),
         tickets_with_dropped=sum(bool(r.dropped_identifiers) for r in results),
+        added=sum(len(r.added_identifiers) for r in results),
+        when_filled=sum(r.when_from_rule is not None for r in results),
         seconds_median=statistics.median(seconds) if seconds else None,
         seconds_p90=seconds[int(0.9 * (len(seconds) - 1))] if seconds else None,
     )
@@ -321,8 +354,9 @@ def render(set_name: str, reports: Sequence[SystemReport]) -> str:
             "",
             f"## {set_name}: fields (gold subset): F1 (range), P / R",
             "",
-            "| System | Gold | " + " | ".join(FIELDS) + " | Dropped identifiers |",
-            "|---|---|" + "---|" * (len(FIELDS) + 1),
+            "| System | Gold | " + " | ".join(FIELDS) + " | Identifiers dropped · added "
+            "| 'when' from a rule |",
+            "|---|---|" + "---|" * (len(FIELDS) + 2),
         ]
         for r in models:
             cells = [
@@ -330,6 +364,10 @@ def render(set_name: str, reports: Sequence[SystemReport]) -> str:
                 f"{cell(r.fields[f].recall)}"
                 for f in FIELDS
             ]
-            dropped = f"{r.dropped} in {r.tickets_with_dropped} of {r.requests} tickets"
-            lines.append(f"| {r.name} | {r.gold} | " + " | ".join(cells) + f" | {dropped} |")
+            changed = f"{r.dropped} in {r.tickets_with_dropped} of {r.requests} tickets · {r.added}"
+            lines.append(
+                f"| {r.name} | {r.gold} | "
+                + " | ".join(cells)
+                + f" | {changed} | {r.when_filled} |"
+            )
     return "\n".join(lines) + "\n"

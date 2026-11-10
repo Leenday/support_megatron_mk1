@@ -17,6 +17,7 @@ from megatron.evaluation import (
     render,
     tfidf_baseline,
     token_f1,
+    with_rules,
 )
 from megatron.inputs import Request
 from megatron.llm import OllamaExtractor
@@ -204,6 +205,32 @@ def test_render_lists_baselines_and_models():
     assert "1 in 1 of 3 tickets" in text
 
 
+def test_with_rules_measures_the_rules_on_saved_answers():
+    """An answer saved before #35: the rules add the missed phone and drop a plain word."""
+    saved = Result(
+        id=1,
+        request="Printer PRN-305 jammed, call +7 999 123-45-67 (asdfgh)",
+        expected="hardware",
+        ticket=ticket(identifiers=["PRN-305", "asdfgh"], when=None),
+    )
+    failed = Result(id=2, request="x", expected="network", error="no valid ticket")
+
+    fixed, untouched = with_rules([saved, failed], add=True)
+    assert fixed.ticket is not None
+    assert fixed.ticket.identifiers == ["PRN-305", "+7 999 123-45-67"]
+    assert (fixed.dropped_identifiers, fixed.added_identifiers) == (
+        ["asdfgh"],
+        ["+7 999 123-45-67"],
+    )
+    assert untouched == failed
+    assert model_report("m", [saved], [GOLD], 10, 1).fields["identifiers"] == Counts(
+        tp=1, fp=1, fn=1
+    )
+    report = model_report("m + rules", [fixed], [GOLD], 10, 1)
+    assert report.fields["identifiers"] == Counts(tp=2)
+    assert (report.dropped, report.added, report.when_filled) == (1, 1, 0)
+
+
 class FakeClient:
     def __init__(self, *answers: dict | str) -> None:
         self.answers = [a if isinstance(a, str) else json.dumps(a) for a in answers]
@@ -259,6 +286,11 @@ def test_cli_runs_backend_resumes_and_reports(
     assert "| tiny-1b | 3 | 0.67 (" in report
     assert "| tiny-1b | 1 | " in report  # fields on one gold request
     assert "2 done, 1 to go" in capsys.readouterr().out
+
+    assert eval_cli.main([*args, "--rules"]) == 0
+    report = (out / "report.md").read_text(encoding="utf-8")
+    assert "| tiny-1b + rules | 3 | 0.67 (" in report
+    assert "| tiny-1b + rules + additions | 3 | 0.67 (" in report
 
 
 def test_cli_rejects_labels_missing_from_the_config(tmp_path, monkeypatch, departments_path):
