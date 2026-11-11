@@ -133,21 +133,19 @@ def create_ticket(
 ) -> Request:
     """Extract, route and save; returns the request, with its ticket or its error.
 
-    A failed extraction is saved with the error, so no request is lost. The model call is
-    outside the transaction: it takes seconds, and nothing is written until it returns.
+    A failed extraction is saved with the error, so no request is lost, and so is a request
+    that meets a misconfigured backend (no API key). The model call is outside the
+    transaction: it takes seconds, and nothing is written until it returns.
     """
     config = departments_config()
-    # Looked up at call time, so tests can replace `default_extractor` for the views too.
-    extractor = (extractor_factory or default_extractor)(config)
     request = Request(
-        text=text,
-        contact=contact,
-        requester=requester,
-        model=extractor.model,
-        prompt_version=PROMPT_VERSION,
+        text=text, contact=contact, requester=requester, prompt_version=PROMPT_VERSION
     )
     start = time.perf_counter()
     try:
+        # Looked up at call time, so tests can replace `default_extractor` for the views too.
+        extractor = (extractor_factory or default_extractor)(config)
+        request.model = extractor.model
         extraction = extractor.extract_detailed(text)
     except (ExtractionError, BackendError) as e:
         logger.warning("request not turned into a ticket: %s", e)

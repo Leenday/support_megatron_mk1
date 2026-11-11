@@ -181,7 +181,7 @@ def test_openai_refusal_is_retried(departments):
 @pytest.mark.parametrize("key", [None, ""])
 def test_openai_needs_a_key(departments, key):
     settings = Settings(_env_file=None, llm_backend="openai", openai_api_key=key)
-    with pytest.raises(ValueError, match="OPENAI_API_KEY"):
+    with pytest.raises(BackendError, match="OPENAI_API_KEY"):
         build_extractor(departments, settings)
 
 
@@ -357,3 +357,10 @@ def test_extract_drops_plain_words_from_identifiers(departments):
     extraction = extractor.extract_detailed("asdfgh 12345: принтер замял бумагу")
     assert extraction.ticket.identifiers == ["12345"]
     assert extraction.dropped_identifiers == ["asdfgh"]
+
+
+def test_cli_reports_an_unconfigured_backend(monkeypatch, capsys, departments_path):
+    monkeypatch.setenv("DEPARTMENTS_PATH", str(departments_path))
+    monkeypatch.setenv("OPENAI_API_KEY", "")
+    assert cli.main(["--backend", "openai", "text"]) == 1
+    assert "error: LLM_BACKEND=openai needs OPENAI_API_KEY" in capsys.readouterr().err

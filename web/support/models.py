@@ -72,7 +72,9 @@ class Department(models.Model):
     description = models.TextField(
         help_text="The model reads this to choose the department: describe what it handles."
     )
-    tags = models.JSONField(default=list, help_text="Keywords, shown to the model as well.")
+    tags = models.JSONField(
+        default=list, blank=True, help_text="Keywords, shown to the model as well."
+    )
     language = models.CharField(max_length=2, help_text="Language of the department's tickets.")
     capacity = models.PositiveIntegerField(
         null=True,
@@ -148,7 +150,7 @@ class Request(models.Model):
     model = models.CharField(max_length=100, blank=True)
     prompt_version = models.CharField(max_length=20, blank=True)
     attempts = models.PositiveSmallIntegerField(null=True)
-    dropped_identifiers = models.JSONField(default=list)
+    dropped_identifiers = models.JSONField(default=list, blank=True)
     seconds = models.FloatField(null=True)
     error = models.TextField(blank=True)
     access_code = models.CharField(
@@ -180,9 +182,10 @@ class Ticket(models.Model):
     where = models.TextField(null=True, blank=True)
     when = models.TextField(null=True, blank=True)
     what = models.TextField()
-    identifiers = models.JSONField(default=list)
+    # blank: an empty list is a valid answer, and the admin form must accept it (#19).
+    identifiers = models.JSONField(default=list, blank=True)
     summary = models.CharField(max_length=300)
-    tags = models.JSONField(default=list)
+    tags = models.JSONField(default=list, blank=True)
     candidates = models.JSONField(default=list, help_text="Department ids, best fit first.")
     language = models.CharField(max_length=2)
     department = models.ForeignKey(Department, on_delete=models.PROTECT, related_name="tickets")

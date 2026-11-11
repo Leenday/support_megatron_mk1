@@ -257,3 +257,24 @@ def test_actions_need_post(client, ivan):
 def test_admin_sets_the_specialists_department(admin_client):
     page = admin_client.get(reverse("admin:support_user_add")).content.decode()
     assert 'name="department"' in page
+
+
+def test_admin_saves_a_ticket_without_identifiers(admin_client):
+    """#19: an empty JSON list counted as a missing value, so the admin could not reassign."""
+    ticket = make_ticket(tags=[])
+    url = reverse("admin:support_ticket_change", args=[ticket.pk])
+    data = {
+        "request": ticket.request_id,
+        "what": ticket.what,
+        "identifiers": "[]",
+        "summary": ticket.summary,
+        "tags": "[]",
+        "candidates": '["network", "software"]',
+        "language": "ru",
+        "department": "software",
+        "status": "new",
+    }
+    response = admin_client.post(url, data)
+    assert response.status_code == 302, response.context["adminform"].form.errors
+    ticket.refresh_from_db()
+    assert ticket.department_id == "software"
