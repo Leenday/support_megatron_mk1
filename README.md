@@ -70,13 +70,14 @@ DEPARTMENTS_PATH=config/queues_en.yaml uv run megatron --file data/local/en/test
 
 - department: accuracy and macro-F1 of the model's best fit, the share of requests whose expected department is among the candidates, valid answers (and valid on the first attempt), seconds per request (median, 90th percentile);
 - fields on the checked gold subset: precision, recall and F1 per field. Free-text fields match when their word overlap (token F1 over word stems) is at least 0.5, identifiers are compared as sets; a failed request counts as an empty ticket, so failures lower recall;
-- dropped identifiers: how often the guardrail removed identifiers that are not in the request text;
+- dropped identifiers: how often the guardrails removed identifiers that are not in the request text or are plain words (the shape filter of [src/megatron/rules.py](src/megatron/rules.py), #35: an identifier has a digit, or is an e-mail, a placeholder or a login like `a.smirnova`);
 - 95 % bootstrap ranges, since the sets are small.
 
 ```bash
 DEPARTMENTS_PATH=config/queues_en.yaml LLM_BACKEND=openai uv run megatron-eval data/local/en --run
 DEPARTMENTS_PATH=config/queues_en.yaml docker compose run --rm eval data/local/en --run   # qwen3:1.7b
 uv run megatron-eval data/local/en                # report only, from the saved results
+uv run megatron-eval data/local/ru --rules        # + rows with the rules applied to the saved answers
 ```
 
 The models × metrics table of iteration 1, the choice of model and the target values: [docs/results.md](docs/results.md).

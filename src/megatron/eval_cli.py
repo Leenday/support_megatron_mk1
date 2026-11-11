@@ -28,6 +28,7 @@ from megatron.evaluation import (
     model_report,
     render,
     tfidf_baseline,
+    with_rules,
 )
 from megatron.inputs import Request, load_requests
 from megatron.llm import (
@@ -74,6 +75,12 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--out", type=Path, help="output directory (default: out/eval/<set>, <set>-dev for dev)"
+    )
+    parser.add_argument(
+        "--rules",
+        action="store_true",
+        help="also score every results file with the rules applied: the shape filter that the "
+        "extractor uses, and with the additions (missed codes, 'when' from a date) (#35)",
     )
     parser.add_argument("--rounds", type=int, default=1000, help="bootstrap resamples (1000)")
     parser.add_argument("--seed", type=int, default=0)
@@ -169,6 +176,13 @@ def main(argv: list[str] | None = None) -> int:
         if len(results) < len(test):
             print(f"note: {path} has {len(results)} of {len(test)} requests", file=sys.stderr)
         reports.append(model_report(path.stem, results, gold, args.rounds, args.seed))
+        if args.rules:
+            # The rules only post-process an answer: no model call is needed to measure them.
+            for suffix, add in ((" + rules", False), (" + rules + additions", True)):
+                changed = with_rules(results, add=add)
+                reports.append(
+                    model_report(path.stem + suffix, changed, gold, args.rounds, args.seed)
+                )
 
     report = render(name, reports)
     print("\n" + report)
