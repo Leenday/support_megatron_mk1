@@ -12,20 +12,41 @@ from pathlib import Path
 
 import yaml
 from django.db import transaction
-from django.db.models import Count
+from django.db.models import Count, QuerySet
 from django.utils import timezone
+from pydantic import BaseModel, Field
 
 from megatron.departments import Department as DepartmentConfig
 from megatron.departments import DepartmentsConfig, RoutingWeights, load_departments
+from megatron.departments import System as SystemConfig
 from megatron.llm import BackendError, ExtractionError, Extractor, build_extractor
 from megatron.prompt import PROMPT_VERSION
 from megatron.routing import route, score_candidates
 from megatron.settings import Settings
-from support.models import Department, Request, RoutingSettings, Ticket, TicketEvent, User
+from megatron.ticket import RoutedTicket
+from support.models import (
+    Department,
+    Request,
+    RoutingSettings,
+    System,
+    Ticket,
+    TicketEvent,
+    User,
+)
 
 logger = logging.getLogger(__name__)
 
 ExtractorFactory = Callable[[DepartmentsConfig], Extractor]
+
+
+def open_ticket_counts() -> dict[str, int]:
+    """Open tickets (New, In progress) per department id; departments without any are absent."""
+    return dict(
+        Ticket.objects.filter(status__in=Ticket.OPEN)
+        .values("department")
+        .annotate(n=Count("pk"))
+        .values_list("department", "n")
+    )
 
 
 def departments_config() -> DepartmentsConfig:
@@ -35,12 +56,7 @@ def departments_config() -> DepartmentsConfig:
     used only when every active department has a capacity, as in the YAML config.
     """
     departments = list(Department.objects.filter(active=True))
-    open_tickets = dict(
-        Ticket.objects.filter(status__in=Ticket.OPEN)
-        .values("department")
-        .annotate(n=Count("pk"))
-        .values_list("department", "n")
-    )
+    open_tickets = open_ticket_counts()
     with_load = all(d.capacity for d in departments)
     routing = RoutingSettings.load()
     return DepartmentsConfig(
@@ -62,6 +78,10 @@ def departments_config() -> DepartmentsConfig:
             )
             for d in departments
         ],
+        systems=[
+            SystemConfig(id=x.id, name=x.name, spellings=x.spellings)
+            for x in System.objects.filter(active=True)
+        ],
     )
 
 
@@ -69,28 +89,76 @@ def default_extractor(config: DepartmentsConfig) -> Extractor:
     return build_extractor(config, Settings())
 
 
+class ExtractResult(BaseModel):
+    """What the CLI prints for one request: the routed ticket and how it was obtained."""
+
+    model: str = Field(examples=["gpt-5.4-mini"])
+    prompt_version: str = Field(examples=["v3"])
+    ticket: RoutedTicket
+    attempts: int = Field(examples=[1], description="Model calls it took to get a valid ticket")
+    dropped_identifiers: list[str] = Field(
+        examples=[[]], description="Identifiers the model gave that are not in the request text"
+    )
+    seconds: float = Field(examples=[1.4])
+
+
+def extract(text: str, extractor_factory: ExtractorFactory | None = None) -> ExtractResult:
+    """Extract and route without saving anything, exactly as the CLI does.
+
+    Raises `ExtractionError` or `BackendError` like the extractor.
+    """
+    config = departments_config()
+    extractor = (extractor_factory or default_extractor)(config)
+    start = time.perf_counter()
+    extraction = extractor.extract_detailed(text)
+    return ExtractResult(
+        model=extractor.model,
+        prompt_version=PROMPT_VERSION,
+        ticket=route(extraction.ticket, config),
+        attempts=extraction.attempts,
+        dropped_identifiers=extraction.dropped_identifiers,
+        seconds=round(time.perf_counter() - start, 1),
+    )
+
+
+def visible_tickets(user: User) -> QuerySet[Ticket]:
+    """The tickets a user may see: admins all, specialists their department's, others their own.
+
+    "Others" are accounts that send requests through the API, such as an integration.
+    """
+    tickets = Ticket.objects.select_related("department", "assignee", "request")
+    if user.is_superuser or user.has_role("Admin"):
+        return tickets
+    if user.has_role("Specialist"):
+        return (
+            tickets.filter(department_id=user.department_id)
+            if user.department_id
+            else tickets.none()
+        )
+    return tickets.filter(request__requester=user)
+
+
 def create_ticket(
     text: str,
     contact: str = "",
     requester: User | None = None,
-    extractor_factory: ExtractorFactory = default_extractor,
+    extractor_factory: ExtractorFactory | None = None,
 ) -> Request:
     """Extract, route and save; returns the request, with its ticket or its error.
 
-    A failed extraction is saved with the error, so no request is lost. The model call is
-    outside the transaction: it takes seconds, and nothing is written until it returns.
+    A failed extraction is saved with the error, so no request is lost, and so is a request
+    that meets a misconfigured backend (no API key). The model call is outside the
+    transaction: it takes seconds, and nothing is written until it returns.
     """
     config = departments_config()
-    extractor = extractor_factory(config)
     request = Request(
-        text=text,
-        contact=contact,
-        requester=requester,
-        model=extractor.model,
-        prompt_version=PROMPT_VERSION,
+        text=text, contact=contact, requester=requester, prompt_version=PROMPT_VERSION
     )
     start = time.perf_counter()
     try:
+        # Looked up at call time, so tests can replace `default_extractor` for the views too.
+        extractor = (extractor_factory or default_extractor)(config)
+        request.model = extractor.model
         extraction = extractor.extract_detailed(text)
     except (ExtractionError, BackendError) as e:
         logger.warning("request not turned into a ticket: %s", e)
@@ -151,6 +219,13 @@ def import_departments(config: DepartmentsConfig) -> dict[str, int]:
     counts["deactivated"] = (
         Department.objects.filter(active=True).exclude(id__in=config.ids).update(active=False)
     )
+    # Systems are imported the same way: by id, missing ones deactivated (#34).
+    for x in config.systems:
+        System.objects.update_or_create(
+            id=x.id, defaults={"name": x.name, "spellings": x.spellings, "active": True}
+        )
+    System.objects.filter(active=True).exclude(id__in=config.system_ids).update(active=False)
+    counts["systems"] = len(config.systems)
     routing = RoutingSettings.load()
     routing.w_match = config.routing.w_match
     routing.w_load = config.routing.w_load
@@ -173,6 +248,8 @@ def export_departments() -> str:
     for d in data["departments"]:
         if not d["fallback"]:
             del d["fallback"]
+    if not data["systems"]:
+        del data["systems"]
     header = (
         f"# Exported from the service database on {timezone.localtime():%Y-%m-%d %H:%M %Z}"
         " (manage.py export_departments).\n"

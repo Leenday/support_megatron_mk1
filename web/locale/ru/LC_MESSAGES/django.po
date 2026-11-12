@@ -1,0 +1,308 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the PACKAGE package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: PACKAGE VERSION\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-11-12 08:06+0300\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: Russian\n"
+"Language: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=4; plural=(n%10==1 && n%100!=11 ? 0 : n%10>=2 && "
+"n%10<=4 && (n%100<12 || n%100>14) ? 1 : n%10==0 || (n%10>=5 && n%10<=9) || "
+"(n%100>=11 && n%100<=14)? 2 : 3);\n"
+
+msgid "Queue"
+msgstr "Очередь"
+
+msgid "My tickets"
+msgstr "Мои заявки"
+
+msgid "All tickets"
+msgstr "Все заявки"
+
+#, python-format
+msgid "Created and routed to “%(department)s”"
+msgstr "Создана и направлена в отдел «%(department)s»"
+
+msgid "Taken in progress"
+msgstr "Взята в работу"
+
+#, python-format
+msgid "Edited: %(fields)s"
+msgstr "Изменены поля: %(fields)s"
+
+#, python-format
+msgid "Returned from “%(from)s” to “%(to)s”: %(reason)s"
+msgstr "Возвращена из отдела «%(from)s» в отдел «%(to)s»: %(reason)s"
+
+msgid "Done; the department was right"
+msgstr "Выполнена; отдел верный"
+
+#, python-format
+msgid "Done; it should have gone to “%(department)s”"
+msgstr "Выполнена; должна была уйти в отдел «%(department)s»"
+
+msgid "The ticket is yours now."
+msgstr "Заявка теперь ваша."
+
+msgid "Changes saved."
+msgstr "Изменения сохранены."
+
+#, python-format
+msgid "Returned to “%(department)s”."
+msgstr "Возвращена в отдел «%(department)s»."
+
+msgid "The ticket is done."
+msgstr "Заявка выполнена."
+
+msgid "Describe the problem in your own words"
+msgstr "Опишите проблему своими словами"
+
+msgid "Russian or English. Who, where, when and what happened, if you know."
+msgstr ""
+"На русском или английском. Кто, где, когда и что случилось, если знаете."
+
+msgid "How to reach you"
+msgstr "Как с вами связаться"
+
+msgid "E-mail, phone or messenger."
+msgstr "E-mail, телефон или мессенджер."
+
+msgid "Status"
+msgstr "Статус"
+
+msgid "Any"
+msgstr "Любой"
+
+msgid "Tag"
+msgstr "Тег"
+
+msgid "System"
+msgstr "Система"
+
+msgid "From"
+msgstr "С"
+
+msgid "To"
+msgstr "По"
+
+msgid "Who"
+msgstr "Кто"
+
+msgid "Where"
+msgstr "Где"
+
+msgid "When"
+msgstr "Когда"
+
+msgid "What"
+msgstr "Что"
+
+msgid "Summary"
+msgstr "Кратко"
+
+msgid "Tags"
+msgstr "Теги"
+
+msgid "Separated by commas."
+msgstr "Через запятую."
+
+msgid "Why it is not for this department"
+msgstr "Почему заявка не для этого отдела"
+
+msgid "Was the department right?"
+msgstr "Отдел был выбран верно?"
+
+msgid "Yes"
+msgstr "Да"
+
+msgid "No, it should have gone to:"
+msgstr "Нет, она должна была уйти в:"
+
+msgid "Department"
+msgstr "Отдел"
+
+msgid "Choose a department"
+msgstr "Выберите отдел"
+
+msgid "Choose the department that should have got it."
+msgstr "Выберите отдел, в который она должна была уйти."
+
+msgid "New"
+msgstr "Новая"
+
+msgid "In progress"
+msgstr "В работе"
+
+msgid "Done"
+msgstr "Выполнена"
+
+msgid "Support"
+msgstr "Поддержка"
+
+msgid "Dashboard"
+msgstr "Дашборд"
+
+msgid "Log out"
+msgstr "Выйти"
+
+msgid ""
+"You have no department yet, so the queue is empty. Ask an admin to set it."
+msgstr ""
+"У вас ещё нет отдела, поэтому очередь пуста. Попросите администратора его "
+"указать."
+
+msgid "Show"
+msgstr "Показать"
+
+msgid "Ticket"
+msgstr "Заявка"
+
+msgid "Age"
+msgstr "Ждёт"
+
+msgid "Specialist"
+msgstr "Специалист"
+
+msgid "Take"
+msgstr "Взять в работу"
+
+msgid "Only the oldest 200 are shown: narrow the filters."
+msgstr "Показаны только 200 самых старых: уточните фильтры."
+
+msgid "No tickets here."
+msgstr "Заявок нет."
+
+#, python-format
+msgid "Ticket #%(number)s"
+msgstr "Заявка №%(number)s"
+
+msgid "Systems"
+msgstr "Системы"
+
+msgid "Identifiers"
+msgstr "Идентификаторы"
+
+msgid "Model's candidates"
+msgstr "Кандидаты модели"
+
+msgid "Created"
+msgstr "Создана"
+
+msgid "Taken"
+msgstr "Взята"
+
+msgid "Closed"
+msgstr "Закрыта"
+
+#, python-format
+msgid "Request #%(number)s"
+msgstr "Обращение №%(number)s"
+
+msgid "Contact"
+msgstr "Контакт"
+
+msgid "Sent"
+msgstr "Отправлено"
+
+msgid "The ticket becomes yours and moves to In progress."
+msgstr "Заявка станет вашей и перейдёт в статус «В работе»."
+
+msgid "Close"
+msgstr "Закрыть"
+
+msgid "Mark done"
+msgstr "Отметить выполненной"
+
+msgid "Return"
+msgstr "Вернуть"
+
+#, python-format
+msgid "Not for this department? The ticket goes to “%(department)s” as New."
+msgstr "Не для этого отдела? Заявка уйдёт в отдел «%(department)s» как новая."
+
+msgid "Every department has had this ticket; an admin can reassign it."
+msgstr ""
+"Заявка уже побывала во всех подходящих отделах; переназначить её может "
+"администратор."
+
+msgid "Edit the fields"
+msgstr "Правка полей"
+
+msgid "Save"
+msgstr "Сохранить"
+
+msgid "History"
+msgstr "История"
+
+msgid "Log in"
+msgstr "Войти"
+
+msgid "Log in for staff"
+msgstr "Вход для сотрудников"
+
+msgid "Requesters need no account: use the request form."
+msgstr "Заявителям учётная запись не нужна: воспользуйтесь формой обращения."
+
+msgid "Wrong username or password."
+msgstr "Неверное имя пользователя или пароль."
+
+msgid "Username"
+msgstr "Имя пользователя"
+
+msgid "Password"
+msgstr "Пароль"
+
+msgid "New request"
+msgstr "Новое обращение"
+
+msgid ""
+"Too many requests from your address. Please wait a minute and send it again."
+msgstr ""
+"Слишком много обращений с вашего адреса. Подождите минуту и отправьте снова."
+
+msgid "Processing…"
+msgstr "Обрабатывается…"
+
+msgid "Send"
+msgstr "Отправить"
+
+#, python-format
+msgid "Ticket #%(number)s accepted, sent to “%(department)s”."
+msgstr "Заявка №%(number)s принята и направлена в отдел «%(department)s»."
+
+#, python-format
+msgid "Request #%(number)s accepted. A specialist will route it manually."
+msgstr "Обращение №%(number)s принято. Специалист распределит его вручную."
+
+msgid "Keep this link to check the status:"
+msgstr "Сохраните ссылку, чтобы проверить статус:"
+
+msgid "The request is waiting for a specialist to route it."
+msgstr "Обращение ждёт, пока специалист его распределит."
+
+msgid "Send another request"
+msgstr "Отправить ещё одно обращение"
+
+msgid "Only the specialist working on the ticket can do this."
+msgstr "Это может только специалист, который работает с заявкой."
+
+msgid "The ticket is already taken."
+msgstr "Заявку уже взяли в работу."
+
+msgid "A done ticket cannot be returned."
+msgstr "Выполненную заявку вернуть нельзя."
+
+msgid "There is no other department to return the ticket to; ask an admin."
+msgstr "Вернуть заявку больше некуда; обратитесь к администратору."
+
+msgid "Unknown department."
+msgstr "Неизвестный отдел."

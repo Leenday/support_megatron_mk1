@@ -24,6 +24,7 @@ import yaml
 from pydantic import BaseModel, Field
 
 from megatron.inputs import Request
+from megatron.rules import blank_dates, find_dates, find_identifiers
 
 logger = logging.getLogger(__name__)
 
@@ -158,18 +159,6 @@ def write_requests(path: Path, requests: Iterable[Request]) -> None:
 
 # --- Gold subset ---------------------------------------------------------------------------
 
-IDENTIFIER_PATTERNS = [
-    r"[\w.+-]+@[\w-]+\.[\w.-]*\w",  # e-mail
-    r"\+?\d[\d ()-]{8,}\d",  # phone number
-    r"<[a-z_]+>|\[[a-z_]+\]",  # anonymisation placeholders: <acc_num>, [phone]
-    r"\b(?=[\w-]*\d)[A-Za-z][\w-]*\d[\w-]*\b",  # codes with letters and digits: ORD-1042
-    r"\b\d{4,}\b",  # long numbers: account, order or client ids
-]
-DATE_PATTERN = (
-    r"\b\d{1,2}[./]\d{1,2}(?:[./]\d{2,4})?\b|\b\d{4}-\d{2}-\d{2}\b|\b\d{1,2}:\d{2}(?::\d{2})?\b"
-    r"|\b(?:yesterday|today|this morning|вчера|сегодня|с утра)\b"
-)
-
 
 class GoldTicket(BaseModel):
     """A request with its hand-checked ticket fields; `checked` marks the reviewed ones."""
@@ -183,29 +172,17 @@ class GoldTicket(BaseModel):
     when: str | None = None
     what: str | None = None
     identifiers: list[str] = []
-
-
-def find_identifiers(text: str) -> list[str]:
-    """Identifier candidates for the draft, in order of appearance, without repeats."""
-    found: dict[int, str] = {}
-    for pattern in IDENTIFIER_PATTERNS:
-        for match in re.finditer(pattern, text):
-            covered = any(
-                start <= match.start() < start + len(value) for start, value in found.items()
-            )
-            if not covered:
-                found[match.start()] = match.group().strip()
-    # A long number is often a year or a time, so the reviewer still decides.
-    return list(dict.fromkeys(found[start] for start in sorted(found)))
+    # Added after the other fields were checked (#34), so it has its own review mark;
+    # `megatron-eval --draft-systems` fills it from the spellings of the vocabulary.
+    systems: list[str] = []
+    systems_checked: bool = False
 
 
 def draft_gold(request: Request) -> GoldTicket:
     """Gold draft: identifiers and dates found by regular expressions, the rest left empty."""
-    dates = list(re.finditer(DATE_PATTERN, request.text, re.IGNORECASE))
+    dates = find_dates(request.text)
     # Blank the dates out, so a year or an hour is not taken for an identifier.
-    text = request.text
-    for match in dates:
-        text = text[: match.start()] + " " * len(match.group()) + text[match.end() :]
+    text = blank_dates(request.text, dates)
     return GoldTicket(
         id=request.id if request.id is not None else "",
         expected=request.expected or "",

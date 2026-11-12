@@ -1,0 +1,106 @@
+{% extends "support/base.html" %}{% load i18n %}
+{% block title %}{% blocktranslate with number=ticket.pk %}Ticket #{{ number }}{% endblocktranslate %}{% endblock %}
+{% block width %}wide{% endblock %}{% block main_width %}wide{% endblock %}
+{% block content %}
+<p><a href="{% url 'desk' %}">← {% translate "Dashboard" %}</a></p>
+<h1>{% blocktranslate with number=ticket.pk %}Ticket #{{ number }}{% endblocktranslate %}: {{ ticket.summary }}</h1>
+<div class="grid">
+  <div class="card">
+    <h2>{% translate "Ticket" %}</h2>
+    <dl>
+      <dt>{% translate "Status" %}</dt><dd>{{ ticket.get_status_display }}{% if ticket.assignee %} · {{ ticket.assignee.get_username }}{% endif %}</dd>
+      <dt>{% translate "Department" %}</dt><dd>{{ department }}</dd>
+      <dt>{% translate "Who" %}</dt><dd>{{ ticket.who|default:"—" }}</dd>
+      <dt>{% translate "Where" %}</dt><dd>{{ ticket.where|default:"—" }}</dd>
+      <dt>{% translate "Systems" %}</dt><dd>{% for name in systems %}<span class="tag">{{ name }}</span>{% empty %}—{% endfor %}</dd>
+      <dt>{% translate "When" %}</dt><dd>{{ ticket.when|default:"—" }}</dd>
+      <dt>{% translate "What" %}</dt><dd>{{ ticket.what }}</dd>
+      <dt>{% translate "Identifiers" %}</dt><dd>{{ ticket.identifiers|join:", "|default:"—" }}</dd>
+      <dt>{% translate "Tags" %}</dt><dd>{% for tag in ticket.tags %}<span class="tag">{{ tag }}</span>{% empty %}—{% endfor %}</dd>
+      <dt>{% translate "Model's candidates" %}</dt><dd>{{ candidates|join:" → " }}</dd>
+      <dt>{% translate "Created" %}</dt><dd>{{ ticket.created_at|date:"SHORT_DATETIME_FORMAT" }}</dd>
+      <dt>{% translate "Taken" %}</dt><dd>{{ ticket.taken_at|date:"SHORT_DATETIME_FORMAT"|default:"—" }}</dd>
+      <dt>{% translate "Closed" %}</dt><dd>{{ ticket.closed_at|date:"SHORT_DATETIME_FORMAT"|default:"—" }}</dd>
+    </dl>
+  </div>
+  <div class="card">
+    <h2>{% blocktranslate with number=saved.pk %}Request #{{ number }}{% endblocktranslate %}</h2>
+    <div class="original">{{ saved.text }}</div>
+    <dl style="margin-top: 12px">
+      <dt>{% translate "Contact" %}</dt><dd>{{ saved.contact|default:"—" }}</dd>
+      <dt>{% translate "Sent" %}</dt><dd>{{ saved.created_at|date:"SHORT_DATETIME_FORMAT" }}</dd>
+    </dl>
+  </div>
+</div>
+
+{% if can_take or own or can_return %}
+<div class="grid">
+  {% if can_take %}
+    <div class="card">
+      <h2>{% translate "Take" %}</h2>
+      <p class="help">{% translate "The ticket becomes yours and moves to In progress." %}</p>
+      <form method="post" action="{% url 'desk_action' ticket.pk 'take' %}">{% csrf_token %}<button>{% translate "Take" %}</button></form>
+    </div>
+  {% endif %}
+  {% if own %}
+    <div class="card">
+      <h2>{% translate "Close" %}</h2>
+      <form method="post" action="{% url 'desk_action' ticket.pk 'close' %}">
+        {% csrf_token %}
+        <label>{{ close_form.correct.label }}</label>
+        <ul class="radio">{% for radio in close_form.correct %}<li>{{ radio }}</li>{% endfor %}</ul>
+        {{ close_form.department }}{{ close_form.department.errors }}
+        <br><button>{% translate "Mark done" %}</button>
+      </form>
+    </div>
+  {% endif %}
+  {% if can_return %}
+    <div class="card">
+      <h2>{% translate "Return" %}</h2>
+      {% if next_department %}
+        <p class="help">{% blocktranslate with department=next_department %}Not for this department? The ticket goes to “{{ department }}” as New.{% endblocktranslate %}</p>
+        <form method="post" action="{% url 'desk_action' ticket.pk 'return' %}">
+          {% csrf_token %}
+          <label for="{{ return_form.reason.id_for_label }}">{{ return_form.reason.label }}</label>
+          {{ return_form.reason }}{{ return_form.reason.errors }}
+          <button>{% translate "Return" %}</button>
+        </form>
+      {% else %}
+        <p class="help">{% translate "Every department has had this ticket; an admin can reassign it." %}</p>
+      {% endif %}
+    </div>
+  {% endif %}
+</div>
+{% endif %}
+
+{% if own %}
+<div class="card">
+  <h2>{% translate "Edit the fields" %}</h2>
+  <form method="post" action="{% url 'desk_action' ticket.pk 'edit' %}">
+    {% csrf_token %}
+    {% for field in edit_form %}
+      <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+      {{ field }}
+      {% if field.help_text %}<p class="help">{{ field.help_text }}</p>{% endif %}
+      {{ field.errors }}
+    {% endfor %}
+    <button>{% translate "Save" %}</button>
+  </form>
+</div>
+{% endif %}
+
+<div class="card">
+  <h2>{% translate "History" %}</h2>
+  <table>
+    <tbody>
+      {% for event, text in events %}
+        <tr>
+          <td>{{ event.at|date:"SHORT_DATETIME_FORMAT" }}</td>
+          <td>{{ event.actor.get_username|default:_("System") }}</td>
+          <td>{{ text }}</td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

@@ -5,9 +5,11 @@ from support.forms import EmailLoginForm, StaffChangeForm, StaffCreationForm
 from support.models import (
     ADMIN_ROLE,
     ROLES,
+    ApiToken,
     Department,
     Request,
     RoutingSettings,
+    System,
     Ticket,
     TicketEvent,
     User,
@@ -15,7 +17,11 @@ from support.models import (
 
 
 def is_admin(user):
-    return user.is_active and user.is_authenticated and user.groups.filter(name=ADMIN_ROLE).exists()
+    return (
+        user.is_authenticated
+        and user.is_active
+        and (user.is_superuser or user.has_role(ADMIN_ROLE))
+    )
 
 
 class SupportAdminSite(admin.AdminSite):
@@ -29,7 +35,9 @@ class SupportAdminSite(admin.AdminSite):
     def has_permission(self, request):
         user = request.user
         return (
-            user.is_active and user.is_authenticated and user.groups.filter(name__in=ROLES).exists()
+            user.is_authenticated
+            and user.is_active
+            and (user.is_superuser or user.groups.filter(name__in=ROLES).exists())
         )
 
     def each_context(self, request):
@@ -39,20 +47,20 @@ class SupportAdminSite(admin.AdminSite):
 class StaffAdmin(UserAdmin):
     form = StaffChangeForm
     add_form = StaffCreationForm
-    list_display = ("email", "role", "is_active")
+    list_display = ("email", "role", "department", "is_active")
     list_filter = ("is_active",)
     search_fields = ("email",)
     ordering = ("email",)
     filter_horizontal = ()
-    fieldsets = ((None, {"fields": ("email", "password", "role", "is_active")}),)
-    add_fieldsets = ((None, {"fields": ("email", "role", "password1", "password2")}),)
+    fieldsets = ((None, {"fields": ("email", "password", "role", "department", "is_active")}),)
+    add_fieldsets = ((None, {"fields": ("email", "role", "department", "password1", "password2")}),)
 
     @admin.display(description="Роль")
     def role(self, obj):
         return ", ".join(group.name for group in obj.groups.all() if group.name in ROLES)
 
     def get_queryset(self, request):
-        return super().get_queryset(request).prefetch_related("groups")
+        return super().get_queryset(request).select_related("department").prefetch_related("groups")
 
     def get_readonly_fields(self, request, obj=None):
         if obj is not None and obj.pk == request.user.pk:
@@ -85,4 +93,15 @@ class StaffAdmin(UserAdmin):
 
 site = SupportAdminSite(name="admin")
 site.register(User, StaffAdmin)
-site.register([Department, RoutingSettings, Request, Ticket, TicketEvent])
+site.register([Department, System, RoutingSettings, Request, Ticket, TicketEvent])
+
+
+@admin.register(ApiToken, site=site)
+class ApiTokenAdmin(admin.ModelAdmin):
+    """Tokens are issued by `manage.py create_api_token` (shown once); here they are revoked."""
+
+    list_display = ["hint", "name", "user", "created_at", "last_used_at"]
+    readonly_fields = ["user", "name", "hint", "created_at", "last_used_at"]
+
+    def has_add_permission(self, request):
+        return False

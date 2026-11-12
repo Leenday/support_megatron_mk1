@@ -20,6 +20,7 @@ from megatron.settings import Settings
 TICKET = {
     "who": "Петрова",
     "where": "каб. 305",
+    "systems": [],
     "when": "с утра",
     "what": "Принтер не печатает, замятие бумаги",
     "identifiers": [],
@@ -181,7 +182,7 @@ def test_openai_refusal_is_retried(departments):
 @pytest.mark.parametrize("key", [None, ""])
 def test_openai_needs_a_key(departments, key):
     settings = Settings(_env_file=None, llm_backend="openai", openai_api_key=key)
-    with pytest.raises(ValueError, match="OPENAI_API_KEY"):
+    with pytest.raises(BackendError, match="OPENAI_API_KEY"):
         build_extractor(departments, settings)
 
 
@@ -348,3 +349,19 @@ def test_cli_backend_and_model_flags_override_the_environment(
     monkeypatch.setenv("DEPARTMENTS_PATH", str(departments_path))
     assert cli.main(["--backend", "openai", "--model", "gpt-5.4-nano", "принтер"]) == 0
     assert (seen[0].llm_backend, seen[0].openai_model) == ("openai", "gpt-5.4-nano")
+
+
+def test_extract_drops_plain_words_from_identifiers(departments):
+    """#35, the iteration 1 review: "asdfgh" from "asdfgh 12345" became an identifier."""
+    answer = {**TICKET, "identifiers": ["asdfgh", "12345"]}
+    extractor, _ = make(departments, json.dumps(answer))
+    extraction = extractor.extract_detailed("asdfgh 12345: принтер замял бумагу")
+    assert extraction.ticket.identifiers == ["12345"]
+    assert extraction.dropped_identifiers == ["asdfgh"]
+
+
+def test_cli_reports_an_unconfigured_backend(monkeypatch, capsys, departments_path):
+    monkeypatch.setenv("DEPARTMENTS_PATH", str(departments_path))
+    monkeypatch.setenv("OPENAI_API_KEY", "")
+    assert cli.main(["--backend", "openai", "text"]) == 1
+    assert "error: LLM_BACKEND=openai needs OPENAI_API_KEY" in capsys.readouterr().err

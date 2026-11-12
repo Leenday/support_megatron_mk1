@@ -2,6 +2,7 @@ import pytest
 from django.contrib.auth.models import Group
 from django.test import override_settings
 from django.urls import reverse
+
 from support.models import ADMIN_ROLE, SPECIALIST_ROLE, User
 
 pytestmark = pytest.mark.django_db
@@ -18,6 +19,10 @@ def test_seeded_admin_can_log_in_with_email(client):
     assert response.url == reverse("admin:index")
     assert "Управление пользователями" in client.get(response.url).content.decode()
     assert client.get(reverse("admin:support_user_changelist")).status_code == 200
+
+    client.logout()
+    response = client.post(reverse("login"), {"username": "TEST@test.test", "password": PASSWORD})
+    assert response.url == reverse("desk")
 
 
 def test_specialist_can_log_in_but_cannot_manage_users(client):

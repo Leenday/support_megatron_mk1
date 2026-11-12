@@ -23,6 +23,7 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    "ninja",  # serves Swagger UI from its own static files, not from a CDN
     "support",
 ]
 
@@ -73,6 +74,10 @@ AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.NumericPasswordValidator"},
 ]
 
+# Staff log in at /login/ and land on the dashboard; requesters never log in (#17).
+LOGIN_URL = "login"
+LOGOUT_REDIRECT_URL = "login"
+
 # The interface follows the browser's language (LocaleMiddleware); Russian otherwise.
 LANGUAGE_CODE = "ru"
 LANGUAGES = [("ru", "Русский"), ("en", "English")]
@@ -85,6 +90,9 @@ STATIC_URL = "static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
+# The request form is open (requesters have no account): submissions per client address.
+REQUEST_FORM_RATE = (5, 60)  # (requests, seconds)
 
 LOGGING = {
     "version": 1,

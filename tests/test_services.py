@@ -9,7 +9,19 @@ from django.contrib.auth.models import Group
 from django.core.checks import run_checks
 from django.core.management import call_command
 from django.test import override_settings
-from support.models import ROLES, Department, Request, RoutingSettings, Ticket, TicketEvent
+
+from megatron.departments import DepartmentsConfig, load_departments
+from megatron.llm import Extractor, FakeExtractor, Messages, build_extractor
+from megatron.settings import Settings
+from support.models import (
+    ROLES,
+    Department,
+    Request,
+    RoutingSettings,
+    System,
+    Ticket,
+    TicketEvent,
+)
 from support.services import (
     create_ticket,
     departments_config,
@@ -17,14 +29,12 @@ from support.services import (
     import_departments,
 )
 
-from megatron.departments import DepartmentsConfig, load_departments
-from megatron.llm import Extractor, FakeExtractor, Messages
-
 pytestmark = pytest.mark.django_db
 
 ANSWER = {
     "who": "Петров",
     "where": "сетевая папка",
+    "systems": [],
     "when": None,
     "what": "Не открывается сетевая папка",
     "identifiers": [],
@@ -90,7 +100,12 @@ def test_import_updates_and_deactivates_but_never_deletes(imported):
     data["departments"][1]["description"] = "New description"
     counts = import_departments(DepartmentsConfig.model_validate(data))
 
-    assert counts == {"created": 0, "updated": len(imported.ids) - 1, "deactivated": 1}
+    assert counts == {
+        "created": 0,
+        "updated": len(imported.ids) - 1,
+        "deactivated": 1,
+        "systems": len(imported.systems),
+    }
     assert not Department.objects.get(id="security").active
     changed = data["departments"][1]["id"]
     assert Department.objects.get(id=changed).description == "New description"
@@ -135,6 +150,15 @@ def test_export_round_trip(imported):
     assert exported.routing == imported.routing
     assert exported.get("hardware").open_tickets == 2
     assert exported.fallback.id == imported.fallback.id
+    assert exported.systems == sorted(imported.systems, key=lambda x: x.id)
+
+
+def test_systems_vocabulary_is_imported_and_given_to_the_model(imported):
+    assert sorted(System.objects.values_list("id", flat=True)) == sorted(imported.system_ids)
+    System.objects.filter(id="vpn").update(active=False)
+    assert "vpn" not in departments_config().system_ids
+    request = create_ticket("Принтер не печатает", extractor_factory=FakeExtractor)
+    assert request.tickets.get().systems == ["printer"]
 
 
 # --- create_ticket ---------------------------------------------------------------------
@@ -176,6 +200,17 @@ def test_failed_extraction_keeps_the_request(imported):
     assert Request.objects.filter(pk=request.pk).exists()
     assert "no valid ticket after 3 attempts" in request.error
     assert not request.tickets.exists()
+
+
+def test_unconfigured_backend_keeps_the_request(imported):
+    """#19: without an API key the form gave a 500 and the request was lost."""
+    settings = Settings(_env_file=None, llm_backend="openai", openai_api_key=None)
+    request = create_ticket(
+        "text", extractor_factory=lambda config: build_extractor(config, settings)
+    )
+    assert Request.objects.filter(pk=request.pk).exists()
+    assert "OPENAI_API_KEY" in request.error
+    assert request.model == ""
 
 
 def test_inactive_department_is_not_offered(imported):

@@ -39,17 +39,37 @@ The first run starts Ollama and downloads the model. Docker on macOS has no GPU 
 **Web service (iteration 2, in progress).** A Django project in [web/](web/) calls the `megatron` package; Postgres runs as the compose service `db`. Set `DJANGO_SECRET_KEY` in `.env` (or `DJANGO_DEBUG=true` for development), then:
 
 ```bash
-docker compose up web                                    # http://localhost:8000/admin/
+docker compose up web                                    # http://localhost:8000/ (form), /desk/, /admin/, /api/docs
+docker compose exec web python web/manage.py createsuperuser
+docker compose exec web python web/manage.py create_api_token <username>   # prints a token once
 docker compose exec web python web/manage.py export_departments out/departments.yaml
 ```
 
-The migrations create the initial Admin account (`test@test.test`). Staff sign in by email at
-`/admin/`. Both staff roles can open the home page. The Admin role can create and edit staff
-accounts, change their roles and passwords, and deactivate them.
+The migrations seed the initial Admin account (`test@test.test`). The admin panel at
+`/admin/` uses email and password. Both staff roles can open the panel home page, and the
+Admin role can manage staff accounts and assign specialists to departments. When creating a
+Django superuser with the command above, provide an email address for panel sign-in.
 
-On the first start `web` migrates the database and imports the departments from `DEPARTMENTS_PATH`. From then on the database is the source of truth: departments are edited in the admin panel, `import_departments <file>` updates them by id (a department missing from the file is deactivated, never deleted), and `export_departments` writes them back as a config for the CLI and the evaluation, with the current load as `open_tickets`. The load used by routing is the department's open tickets (New, In progress) over its capacity. Every request is saved with its contact and extraction log, and a failed one with its error. Staff roles are the groups Specialist and Admin; requesters need no account (an open form with a contact field and a status link, #17). Without Docker: `uv run python web/manage.py migrate` (SQLite in `web/db.sqlite3` when `DATABASE_URL` is empty), then `import_departments config/departments.yaml` and `runserver`.
+On the first start `web` migrates the database and imports the departments from `DEPARTMENTS_PATH`. From then on the database is the source of truth: departments are edited in the admin panel, `import_departments <file>` updates them by id (a department missing from the file is deactivated, never deleted), and `export_departments` writes them back as a config for the CLI and the evaluation, with the current load as `open_tickets`. The load used by routing is the department's open tickets (New, In progress) over its capacity. Every request is saved with its contact and extraction log, and a failed one with its error. Staff roles are the groups Specialist and Admin. Requesters need no account: the form at `/` takes the text and a contact, makes the ticket while the page waits and redirects to a status page at `/status/<request>-<code>/`, where the random code keeps other people's requests unreadable; submissions are limited per address (`REQUEST_FORM_RATE`). The pages follow the browser's language (RU / EN switch in the header); our strings are translated in `web/locale/ru/` (`cd web && python manage.py makemessages -l ru --no-location`, then `compilemessages`; the compiled `.mo` is committed, since the image has no gettext). Staff log in at `/login/` and work in the dashboard at `/desk/`: a specialist (group Specialist with a department) sees the queue of the department's new tickets, oldest first, with their tags and age, "My tickets" and all of the department's tickets, filtered by status, tag and date; an admin sees every department. On a ticket's page are the extracted fields, the original message and the history. "Take" makes the ticket the specialist's and moves it to In progress (the row is locked, so two specialists cannot take one ticket). The assignee edits the fields, with the old and new values recorded, and closes the ticket, answering "Was the department right?" (yes, or the right department). "Return" sends the ticket, as New, to the model's best candidate that has not had it yet, then to the fallback department. The answers and returns are the accuracy in operation (#16), and `taken_at` and `closed_at` the triage time (#43). The JSON API (Django Ninja) gives the CLI's results over HTTP, documented in Swagger UI at `/api/docs` (schema `/api/openapi.json`): `POST /api/extract` (text → routed ticket, nothing saved), `POST /api/tickets` (saved like a form request; 201 with the number, the status link and the ticket, 502 with the number when the model gives no ticket), `GET /api/tickets?status=&department=&limit=&offset=` and `/api/tickets/{id}` (admins see all tickets, specialists their department's, accounts without a role, such as an integration, their own), `GET /api/departments` (with the current load). It takes the browser session or a personal token from `create_api_token`; only its hash is stored, and it is revoked by deleting it in the admin:
 
-**Departments and data.** [config/departments.yaml](config/departments.yaml) lists the routing targets (departments, queues, support lines or categories): `languages` (ticket languages, default `[ru, en]`) and optional load (`capacity`, `open_tickets`: for all departments or none). Another domain or dataset is another config file, selected with `DEPARTMENTS_PATH`. `--file` reads `.txt` (one request per line) or `.jsonl`, one `{"id": ..., "text": "...", "expected": "<department id>"}` per line: the text may span several lines, other keys are ignored, and with `expected` the CLI marks each answer ✓/✗ against the model's best-fit department and prints `department correct: N/M`. Real requests and downloaded datasets go to `data/local/`: git and Docker ignore it, a pre-commit hook refuses to commit it, and compose sees it as `data/local/` (`docker compose run --rm megatron --file data/local/requests.jsonl`).
+```bash
+curl -X POST localhost:8000/api/tickets -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" -d '{"text": "Не работает VPN", "contact": "ivanov@example.com"}'
+```
+
+Without Docker: `uv run python web/manage.py migrate` (SQLite in `web/db.sqlite3` when `DATABASE_URL` is empty), then `import_departments config/departments.yaml` and `runserver`.
+
+**Acceptance check.** [e2e/acceptance.py](e2e/acceptance.py) clicks through the iteration 2 user stories in a real browser as the requester, two specialists and the admin, against the service in Docker with Postgres, and writes one result per story with screenshots to `out/acceptance/` (results of the last run: [docs/testing-iteration2.md](docs/testing-iteration2.md)). It drives the installed Google Chrome with Playwright, which is not a project dependency:
+
+```bash
+LLM_BACKEND=fake DJANGO_DEBUG=true docker compose -p megatron-e2e up -d --build web
+docker compose -p megatron-e2e exec -e DJANGO_SUPERUSER_PASSWORD=<password> web \
+  python web/manage.py createsuperuser --noinput --username boss --email boss@example.com
+uvx --with playwright python -I e2e/acceptance.py --password <password>
+docker compose -p megatron-e2e down -v     # the check's own database, apart from the development one
+```
+
+**Departments and data.** [config/departments.yaml](config/departments.yaml) lists the routing targets (departments, queues, support lines or categories): `languages` (ticket languages, default `[ru, en]`) and optional load (`capacity`, `open_tickets`: for all departments or none). Another domain or dataset is another config file, selected with `DEPARTMENTS_PATH`. An optional `systems` vocabulary lists the domain's systems and channels with the ways requests spell them (`{id: vpn, name: VPN, spellings: [VPN, впн]}`): the ticket's `systems` may only take these ids (an enum, like the departments), so tickets can be filtered and counted by system while "where" stays free text (#34). In the service the vocabulary is the `System` model, edited in the admin panel and exported with the departments. `--file` reads `.txt` (one request per line) or `.jsonl`, one `{"id": ..., "text": "...", "expected": "<department id>"}` per line: the text may span several lines, other keys are ignored, and with `expected` the CLI marks each answer ✓/✗ against the model's best-fit department and prints `department correct: N/M`. Real requests and downloaded datasets go to `data/local/`: git and Docker ignore it, a pre-commit hook refuses to commit it, and compose sees it as `data/local/` (`docker compose run --rm megatron --file data/local/requests.jsonl`).
 
 **Test sets.** `megatron-testset` turns a ticket export (`.csv` or `.jsonl`) into request files for `--file`: it joins the text columns, cleans export noise (HTML entities, `<br>`, markdown, `[image]`), removes what gives the answer away (`--strip-tracker-keys` for keys like `PROJ-123` and links to them, `--leak REGEX` for anything else), turns the label column into department ids (`Technical Support` → `technical_support`), samples at most `--per-label` requests per label and splits them into `dev.jsonl` (prompt tuning, 30 %) and `test.jsonl` (reported numbers) with the same label proportions. Columns recorded after the request (answer, resolution, assignee) are never read. It also writes `gold.yaml`, a draft of the gold subset (30 test requests, labels in turn): identifiers and dates found by regular expressions, to be completed and checked by hand (`checked: true`); a rerun never overwrites it. The English set comes from the public dataset [Tobi-Bueck/customer-support-tickets](https://huggingface.co/datasets/Tobi-Bueck/customer-support-tickets) (synthetic, CC BY-NC 4.0), with its queues in [config/queues_en.yaml](config/queues_en.yaml):
 
@@ -65,13 +85,16 @@ DEPARTMENTS_PATH=config/queues_en.yaml uv run megatron --file data/local/en/test
 
 - department: accuracy and macro-F1 of the model's best fit, the share of requests whose expected department is among the candidates, valid answers (and valid on the first attempt), seconds per request (median, 90th percentile);
 - fields on the checked gold subset: precision, recall and F1 per field. Free-text fields match when their word overlap (token F1 over word stems) is at least 0.5, identifiers are compared as sets; a failed request counts as an empty ticket, so failures lower recall;
-- dropped identifiers: how often the guardrail removed identifiers that are not in the request text;
+- systems (#34): F1 over the sets of system ids and the share of exact matches, on gold tickets marked `systems_checked`; `--draft-systems` fills their `systems` from the vocabulary's spellings for a hand check;
+- "where (vocab)": "where" also counted as right when both texts name the same systems of the vocabulary (different spellings of one system), with the vocabulary of `DEPARTMENTS_PATH` (a gold naming other systems turns it off with a note); "where" values naming no system are listed in `where-outside-vocabulary.tsv` next to the report, as candidates for the vocabulary;
+- dropped identifiers: how often the guardrails removed identifiers that are not in the request text or are plain words (the shape filter of [src/megatron/rules.py](src/megatron/rules.py), #35: an identifier has a digit, or is an e-mail, a placeholder or a login like `a.smirnova`);
 - 95 % bootstrap ranges, since the sets are small.
 
 ```bash
 DEPARTMENTS_PATH=config/queues_en.yaml LLM_BACKEND=openai uv run megatron-eval data/local/en --run
 DEPARTMENTS_PATH=config/queues_en.yaml docker compose run --rm eval data/local/en --run   # qwen3:1.7b
 uv run megatron-eval data/local/en                # report only, from the saved results
+uv run megatron-eval data/local/ru --rules        # + rows with the rules applied to the saved answers
 ```
 
 The models × metrics table of iteration 1, the choice of model and the target values: [docs/results.md](docs/results.md).
@@ -117,25 +140,26 @@ gantt
     Generalize for other domains and datasets [31] :done, t31, 2026-10-29, 2026-11-01
     Console MVP done :milestone, m1, 2026-11-06, 0d
     section 2 · Service
-    Django project, data models, roles and load-aware routing [15] :t15, 2026-11-07, 2026-11-11
-    Django admin users, roles, departments, all tickets [16] :t16, 2026-11-14, 2026-11-18
-    Open request form and status by link [17] :t17, 2026-11-12, 2026-11-16
-    Specialist dashboard take tickets and change statuses [18] :t18, 2026-11-16, 2026-11-24
-    Iteration 2 testing [19] :t19, 2026-11-23, 2026-11-27
-    JSON API with OpenAPI (Swagger) docs [42] :t42, 2026-11-10, 2026-11-13
-    Measure triage time manual vs automatic [43] :t43, 2026-11-20, 2026-11-27
-    Systems vocabulary a normalised 'system' next to free-text 'where' [34] :t34, 2026-11-21, 2026-11-25
-    Rule-based check and extraction of identifiers and dates [35] :t35, 2026-11-19, 2026-11-21
-    Service done :milestone, m2, 2026-11-27, 0d
+    Django project, data models, roles and load-aware routing [15] :done, t15, 2026-11-07, 2026-11-11
+    Open request form and status by link [17] :done, t17, 2026-11-12, 2026-11-16
+    Specialist dashboard take tickets and change statuses [18] :done, t18, 2026-11-16, 2026-11-24
+    JSON API with OpenAPI (Swagger) docs [42] :done, t42, 2026-11-10, 2026-11-13
+    Systems vocabulary a normalised 'system' next to free-text 'where' [34] :done, t34, 2026-11-21, 2026-11-25
+    Rule-based check and extraction of identifiers and dates [35] :done, t35, 2026-11-19, 2026-11-21
+    Service done :milestone, m2, 2026-11-13, 0d
     section 3 · Final
-    Translation RU ↔ EN (if time allows) [23] :t23, 2026-11-28, 2026-12-05
-    Voice input with Whisper (optional) [20] :t20, 2026-11-28, 2026-12-05
-    Final metrics and report [21] :t21, 2026-11-28, 2026-12-10
-    Final presentation [22] :crit, t22, 2026-12-07, 2026-12-14
-    Local models on a GPU qwen3 4b / 8b [44] :t44, 2026-11-28, 2026-12-05
-    Design note split a request across departments [45] :t45, 2026-11-28, 2026-12-07
-    Fact-check ticket claims against the request (if time allows) [36] :t36, 2026-11-28, 2026-12-05
-    Final done :milestone, m3, 2026-12-14, 0d
+    Django admin users, roles, departments, all tickets [16] :t16, 2026-11-14, 2026-11-18
+    Translation RU ↔ EN (if time allows) [23] :t23, 2026-11-19, 2026-11-22
+    Iteration 2 testing [19] :t19, 2026-11-18, 2026-11-20
+    Voice input with Whisper (optional) [20] :t20, 2026-11-21, 2026-11-24
+    Final metrics and report [21] :t21, 2026-11-21, 2026-11-25
+    Final presentation [22] :crit, t22, 2026-11-24, 2026-11-27
+    Measure triage time manual vs automatic [43] :t43, 2026-11-14, 2026-11-21
+    Local models on a GPU qwen3 4b / 8b [44] :t44, 2026-11-17, 2026-11-21
+    Design note split a request across departments [45] :t45, 2026-11-20, 2026-11-22
+    Fact-check ticket claims against the request (if time allows) [36] :t36, 2026-11-21, 2026-11-24
+    Systems vocabulary from specialists' answers, approved by a Validator [57] :t57, 2026-11-14, 2026-11-20
+    Final done :milestone, m3, 2026-11-27, 0d
 ```
 
 | Issue | Task | Start | Due | Owner | Done |
@@ -156,22 +180,23 @@ gantt
 | [#14](https://github.com/Leenday/support_megatron_mk1/issues/14) | Model comparison and results table | 2026-11-02 | 2026-11-06 | Denis | ✅ |
 | [#28](https://github.com/Leenday/support_megatron_mk1/issues/28) | Quality gates: type checking, dependency check, PR title check | 2026-10-28 | 2026-10-30 | Denis | ✅ |
 | [#31](https://github.com/Leenday/support_megatron_mk1/issues/31) | Generalize for other domains and datasets | 2026-10-29 | 2026-11-01 | Denis | ✅ |
-| [#15](https://github.com/Leenday/support_megatron_mk1/issues/15) | Django project, data models, roles and load-aware routing | 2026-11-07 | 2026-11-11 | Denis |  |
+| [#15](https://github.com/Leenday/support_megatron_mk1/issues/15) | Django project, data models, roles and load-aware routing | 2026-11-07 | 2026-11-11 | Denis | ✅ |
 | [#16](https://github.com/Leenday/support_megatron_mk1/issues/16) | Django admin: users, roles, departments, all tickets | 2026-11-14 | 2026-11-18 | Roman |  |
-| [#17](https://github.com/Leenday/support_megatron_mk1/issues/17) | Open request form and status by link | 2026-11-12 | 2026-11-16 | Denis |  |
-| [#18](https://github.com/Leenday/support_megatron_mk1/issues/18) | Specialist dashboard: take tickets and change statuses | 2026-11-16 | 2026-11-24 | Daniil |  |
-| [#23](https://github.com/Leenday/support_megatron_mk1/issues/23) | Translation RU <-> EN (if time allows) | 2026-11-28 | 2026-12-05 | Denis |  |
-| [#19](https://github.com/Leenday/support_megatron_mk1/issues/19) | Iteration 2 testing | 2026-11-23 | 2026-11-27 | All |  |
-| [#20](https://github.com/Leenday/support_megatron_mk1/issues/20) | Voice input with Whisper (optional) | 2026-11-28 | 2026-12-05 | Denis |  |
-| [#21](https://github.com/Leenday/support_megatron_mk1/issues/21) | Final metrics and report | 2026-11-28 | 2026-12-10 | All |  |
-| [#22](https://github.com/Leenday/support_megatron_mk1/issues/22) | Final presentation | 2026-12-07 | 2026-12-14 | All |  |
-| [#42](https://github.com/Leenday/support_megatron_mk1/issues/42) | JSON API with OpenAPI (Swagger) docs | 2026-11-10 | 2026-11-13 | Denis |  |
-| [#43](https://github.com/Leenday/support_megatron_mk1/issues/43) | Measure triage time: manual vs automatic | 2026-11-20 | 2026-11-27 | Denis |  |
-| [#44](https://github.com/Leenday/support_megatron_mk1/issues/44) | Local models on a GPU: qwen3:4b / 8b | 2026-11-28 | 2026-12-05 | Denis |  |
-| [#45](https://github.com/Leenday/support_megatron_mk1/issues/45) | Design note: split a request across departments | 2026-11-28 | 2026-12-07 | Denis |  |
-| [#34](https://github.com/Leenday/support_megatron_mk1/issues/34) | Systems vocabulary: a normalised 'system' next to free-text 'where' | 2026-11-21 | 2026-11-25 | Denis |  |
-| [#35](https://github.com/Leenday/support_megatron_mk1/issues/35) | Rule-based check and extraction of identifiers and dates | 2026-11-19 | 2026-11-21 | Denis |  |
-| [#36](https://github.com/Leenday/support_megatron_mk1/issues/36) | Fact-check ticket claims against the request (if time allows) | 2026-11-28 | 2026-12-05 | Denis |  |
+| [#17](https://github.com/Leenday/support_megatron_mk1/issues/17) | Open request form and status by link | 2026-11-12 | 2026-11-16 | Denis | ✅ |
+| [#18](https://github.com/Leenday/support_megatron_mk1/issues/18) | Specialist dashboard: take tickets and change statuses | 2026-11-16 | 2026-11-24 | Denis | ✅ |
+| [#23](https://github.com/Leenday/support_megatron_mk1/issues/23) | Translation RU <-> EN (if time allows) | 2026-11-19 | 2026-11-22 | Denis |  |
+| [#19](https://github.com/Leenday/support_megatron_mk1/issues/19) | Iteration 2 testing | 2026-11-18 | 2026-11-20 | All |  |
+| [#20](https://github.com/Leenday/support_megatron_mk1/issues/20) | Voice input with Whisper (optional) | 2026-11-21 | 2026-11-24 | Denis |  |
+| [#21](https://github.com/Leenday/support_megatron_mk1/issues/21) | Final metrics and report | 2026-11-21 | 2026-11-25 | All |  |
+| [#22](https://github.com/Leenday/support_megatron_mk1/issues/22) | Final presentation | 2026-11-24 | 2026-11-27 | All |  |
+| [#42](https://github.com/Leenday/support_megatron_mk1/issues/42) | JSON API with OpenAPI (Swagger) docs | 2026-11-10 | 2026-11-13 | Denis | ✅ |
+| [#43](https://github.com/Leenday/support_megatron_mk1/issues/43) | Measure triage time: manual vs automatic | 2026-11-14 | 2026-11-21 | Denis |  |
+| [#44](https://github.com/Leenday/support_megatron_mk1/issues/44) | Local models on a GPU: qwen3:4b / 8b | 2026-11-17 | 2026-11-21 | Denis |  |
+| [#45](https://github.com/Leenday/support_megatron_mk1/issues/45) | Design note: split a request across departments | 2026-11-20 | 2026-11-22 | Denis |  |
+| [#34](https://github.com/Leenday/support_megatron_mk1/issues/34) | Systems vocabulary: a normalised 'system' next to free-text 'where' | 2026-11-21 | 2026-11-25 | Denis | ✅ |
+| [#35](https://github.com/Leenday/support_megatron_mk1/issues/35) | Rule-based check and extraction of identifiers and dates | 2026-11-19 | 2026-11-21 | Denis | ✅ |
+| [#36](https://github.com/Leenday/support_megatron_mk1/issues/36) | Fact-check ticket claims against the request (if time allows) | 2026-11-21 | 2026-11-24 | Denis |  |
+| [#57](https://github.com/Leenday/support_megatron_mk1/issues/57) | Systems vocabulary from specialists' answers, approved by a Validator | 2026-11-14 | 2026-11-20 | Denis |  |
 
 ## Stages
 
@@ -179,7 +204,7 @@ gantt
 |---|---|---|
 | 0 · Initiation and methods review | 2026-10-16 | Idea, first presentation, methods review, impact map, calendar plan. |
 | 1 · Console MVP | 2026-11-06 | Iteration 1: console app, text in -> JSON ticket out; test set and model comparison. |
-| 2 · Service | 2026-11-27 | Iteration 2: Django service with an open request form (no account for requesters) and two staff roles (specialist, admin): JSON API with OpenAPI docs, request form, specialist dashboard with statuses, Django admin, load-aware routing from the database, measured triage time. |
-| 3 · Final | 2026-12-14 | Final metrics, report and presentation. If time allows: local models on a GPU, RU/EN translation, voice input, splitting a request by department. The programme ends in mid-December; exact date to be confirmed. |
+| 2 · Service | 2026-11-13 | Iteration 2: Django service with an open request form (no account for requesters) and two staff roles (specialist, admin): JSON API with OpenAPI docs, request form, specialist dashboard with statuses, load-aware routing from the database. Report on 2026-11-13; the extended admin panel (#16), the testing rerun with the v0.2.0 release (#19) and the triage-time measurement (#43) moved to iteration 3. |
+| 3 · Final | 2026-11-27 | Iteration 3 (2026-11-14 – 2026-11-27): finish the admin panel and release v0.2.0, measure the triage time, grow the systems vocabulary from specialists' answers (Validator), final metrics, report and presentation. If time allows: local models on a GPU, RU/EN translation, voice input, fact-check, splitting a request by department. |
 
-*Dates after 2026-10-16 are planned and may shift; the final date depends on the programme schedule (mid-December).*
+*Dates after 2026-10-16 are planned and may shift; iteration 2 was reported on 2026-11-13; iteration 3 ends on 2026-11-27.*

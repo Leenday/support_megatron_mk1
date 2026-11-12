@@ -20,7 +20,9 @@ from pydantic import BaseModel, Field, ValidationError
 
 from megatron.departments import DepartmentsConfig
 from megatron.prompt import build_system_prompt
+from megatron.rules import apply_rules
 from megatron.settings import Settings
+from megatron.systems import find_systems
 from megatron.ticket import (
     Ticket,
     build_ticket_model,
@@ -49,7 +51,8 @@ class Extraction(BaseModel):
     ticket: Ticket
     attempts: int
     dropped_identifiers: list[str] = Field(
-        description="identifiers the model gave that are not in the request text"
+        description="identifiers the model gave that are not in the request text or do not "
+        "look like identifiers (plain words)"
     )
 
 
@@ -86,10 +89,12 @@ class Extractor(ABC):
             else:
                 quoted = keep_quoted_identifiers(ticket, text)
                 dropped = [i for i in ticket.identifiers if i not in quoted.identifiers]
+                checked, rules = apply_rules(quoted, text)
+                dropped += rules.shape_dropped
                 if dropped:
-                    logger.info("dropped identifiers not in the request: %s", dropped)
+                    logger.info("dropped identifiers: %s", dropped)
                 return Extraction(
-                    ticket=keep_fallback_alone(quoted, self.fallback),
+                    ticket=keep_fallback_alone(checked, self.fallback),
                     attempts=attempt,
                     dropped_identifiers=dropped,
                 )
@@ -147,7 +152,7 @@ class OpenAIExtractor(Extractor):
         if create is None:
             api_key = settings.openai_api_key.get_secret_value() if settings.openai_api_key else ""
             if not api_key:
-                raise ValueError("LLM_BACKEND=openai needs OPENAI_API_KEY")
+                raise BackendError("LLM_BACKEND=openai needs OPENAI_API_KEY")
             client = openai.OpenAI(api_key=api_key, base_url=base_url, timeout=120)
             create = client.chat.completions.create
         self.create: Callable[..., Any] = create
@@ -195,6 +200,7 @@ class FakeExtractor(Extractor):
         ticket = {
             "who": None,
             "where": None,
+            "systems": find_systems(text, self.config.systems),
             "when": None,
             "what": first_sentence[:200],
             "identifiers": [],
