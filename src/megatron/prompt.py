@@ -3,7 +3,7 @@
 from megatron.departments import DepartmentsConfig
 
 # Bumped on every change of the instructions; results record it, so runs can be compared (#9).
-PROMPT_VERSION = "v3"
+PROMPT_VERSION = "v4"  # v4: systems vocabulary (#34)
 
 INSTRUCTIONS = """\
 You turn a support request into a ticket.
@@ -30,6 +30,13 @@ You turn a support request into a ticket.
 """
 
 
+SYSTEMS_INSTRUCTION = """\
+- "systems": the ids of the systems below that the request is about: where the problem is,
+  and both ends of an integration ("A -> B"). Recognise them by meaning and by any of their
+  spellings, including other cases and transliterations. Use [] if none of them is meant.
+"""
+
+
 def build_system_prompt(config: DepartmentsConfig) -> str:
     instructions = INSTRUCTIONS.format(
         fallback=config.fallback.id,
@@ -38,4 +45,14 @@ def build_system_prompt(config: DepartmentsConfig) -> str:
         default_language=config.languages[0],
     )
     departments = "\n".join(f"- {d.id}: {d.description}" for d in config.departments)
-    return instructions + "\nDepartments:\n" + departments
+    if not config.systems:  # without a vocabulary the prompt is v3's
+        return instructions + "\nDepartments:\n" + departments
+    systems = "\n".join(f"- {x.id}: {x.name} ({', '.join(x.spellings)})" for x in config.systems)
+    return (
+        instructions
+        + SYSTEMS_INSTRUCTION
+        + "\nDepartments:\n"
+        + departments
+        + "\n\nSystems:\n"
+        + systems
+    )

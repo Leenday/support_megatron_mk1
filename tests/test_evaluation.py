@@ -23,12 +23,13 @@ from megatron.inputs import Request
 from megatron.llm import OllamaExtractor
 from megatron.prompt import PROMPT_VERSION
 from megatron.settings import Settings
-from megatron.testset import GoldTicket, write_gold
+from megatron.testset import GoldTicket, load_gold, write_gold
 from megatron.ticket import RoutedTicket
 
 TICKET = {
     "who": "Anna Petrova, accounting",
     "where": "room 305",
+    "systems": [],
     "when": "since this morning",
     "what": "The printer shows a paper jam error and does not print",
     "identifiers": ["PRN-305"],
@@ -321,3 +322,30 @@ def test_cli_dev_part_uses_dev_gold_and_no_baselines(
     assert "## set-dev: department" in report
     assert "majority" not in report
     assert "| prompt-v9 | 1 | " in report  # fields scored on gold-dev.yaml
+
+
+def test_systems_are_scored_only_on_checked_gold():
+    given = ticket(systems=["printer", "network"])
+    unchecked = GOLD.model_copy(update={"systems": ["printer"]})
+    assert field_counts(unchecked, given)["systems"] == Counts()
+    checked = unchecked.model_copy(update={"systems_checked": True})
+    assert field_counts(checked, given)["systems"] == Counts(tp=1, fp=1)
+    report = model_report("m", [Result(id=1, request="x", ticket=given)], [checked], 10, 1)
+    assert report.systems_gold == 1
+    assert report.systems_exact is not None and report.systems_exact.value == 0.0
+
+
+def test_cli_drafts_gold_systems_from_spellings(tmp_path, monkeypatch, departments_path):
+    monkeypatch.setenv("DEPARTMENTS_PATH", str(departments_path))
+    reviewed = GOLD.model_copy(
+        update={"id": 2, "text": "VPN down", "systems": [], "systems_checked": True}
+    )
+    write_set(
+        tmp_path / "set",
+        [{"id": 1, "text": "x", "expected": "hardware"}],
+        [GOLD.model_copy(update={"text": "Принтер и VPN не работают"}), reviewed],
+    )
+    assert eval_cli.main([str(tmp_path / "set"), "--draft-systems"]) == 0
+    drafted, kept = load_gold(tmp_path / "set" / "gold.yaml")
+    assert (drafted.systems, drafted.systems_checked) == (["vpn", "printer"], False)
+    assert kept.systems == []  # a reviewed one is left alone

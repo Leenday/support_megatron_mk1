@@ -20,7 +20,7 @@ from django.utils.translation import gettext as _
 
 from support import workflow
 from support.forms import CloseForm, DeskFilterForm, ReturnForm, TicketEditForm
-from support.models import Department, Ticket, TicketEvent, User
+from support.models import Department, System, Ticket, TicketEvent, User
 from support.services import visible_tickets
 
 LISTS = {
@@ -85,7 +85,7 @@ def queue(request: HttpRequest) -> HttpResponse:
     tickets = {"queue": queue_tickets, "mine": mine, "all": visible}[current]
 
     form = DeskFilterForm(request.GET)
-    tag = ""
+    tag = system = ""
     if form.is_valid():
         if form.cleaned_data["status"] and current != "queue":
             tickets = tickets.filter(status=form.cleaned_data["status"])
@@ -94,12 +94,18 @@ def queue(request: HttpRequest) -> HttpResponse:
         if form.cleaned_data["until"]:
             tickets = tickets.filter(created_at__date__lte=form.cleaned_data["until"])
         tag = form.cleaned_data["tag"].strip().lower()
+        system = form.cleaned_data["system"]
     if current == "mine":
         # Open tickets first: they are the specialist's work; done ones are history.
         tickets = tickets.order_by(F("closed_at").asc(nulls_first=True), "created_at")
-    if tag:
+    if tag or system:
         # In Python rather than SQL: JSON containment is not portable to SQLite (the tests).
-        rows = [t for t in tickets if tag in (x.lower() for x in t.tags)]
+        rows = [
+            t
+            for t in tickets
+            if (not tag or tag in (x.lower() for x in t.tags))
+            and (not system or system in t.systems)
+        ]
     else:
         rows = list(tickets[: ROWS + 1])  # one more than shown tells whether there are more
     names = department_names()
@@ -149,6 +155,7 @@ def describe(event: TicketEvent, names: dict[str, str]) -> str:
 def show_ticket(request: HttpRequest, ticket: Ticket, **forms) -> HttpResponse:
     user = staff(request)
     names = department_names()
+    system_names = dict(System.objects.values_list("id", "name"))
     own = ticket.status == Ticket.Status.IN_PROGRESS and ticket.assignee_id == user.pk
     can_return = ticket.status == Ticket.Status.NEW or own
     next_department = workflow.next_department(ticket) if can_return else None
@@ -156,6 +163,7 @@ def show_ticket(request: HttpRequest, ticket: Ticket, **forms) -> HttpResponse:
         "ticket": ticket,
         "department": names[ticket.department_id],
         "candidates": [names.get(c, c) for c in ticket.candidates],
+        "systems": [system_names.get(x, x) for x in ticket.systems],
         "saved": ticket.request,
         "events": [(e, describe(e, names)) for e in ticket.events.select_related("actor")],
         "can_take": ticket.status == Ticket.Status.NEW,

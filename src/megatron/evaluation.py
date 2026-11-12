@@ -26,7 +26,7 @@ from megatron.testset import GoldTicket
 from megatron.ticket import RoutedTicket, Ticket
 
 TEXT_FIELDS = ("who", "where", "when", "what")
-FIELDS = (*TEXT_FIELDS, "identifiers")
+FIELDS = (*TEXT_FIELDS, "identifiers", "systems")
 
 # A free-text field matches the gold value when their word overlap (token F1) reaches this.
 MATCH_THRESHOLD = 0.5
@@ -162,7 +162,23 @@ def field_counts(gold: GoldTicket, ticket: Ticket | None) -> dict[str, Counts]:
         fp=len(given_ids - expected_ids),
         fn=len(expected_ids - given_ids),
     )
+    # Systems are vocabulary ids, compared as sets; only on gold whose systems were checked.
+    if gold.systems_checked:
+        expected_systems = set(gold.systems)
+        given_systems = set(ticket.systems) if ticket else set()
+        counts["systems"] = Counts(
+            tp=len(expected_systems & given_systems),
+            fp=len(given_systems - expected_systems),
+            fn=len(expected_systems - given_systems),
+        )
+    else:
+        counts["systems"] = Counts()
     return counts
+
+
+def systems_exact(gold: GoldTicket, ticket: Ticket | None) -> bool:
+    """The ticket names exactly the gold's systems (both empty counts as right)."""
+    return set(gold.systems) == set(ticket.systems if ticket else [])
 
 
 def total(counts: Iterable[dict[str, Counts]]) -> dict[str, Counts]:
@@ -266,6 +282,8 @@ class SystemReport(BaseModel):
     tickets_with_dropped: int = 0
     added: int = 0
     when_filled: int = 0
+    systems_gold: int = 0
+    systems_exact: Score | None = None
     seconds_median: float | None = None
     seconds_p90: float | None = None
 
@@ -292,6 +310,7 @@ def model_report(
     by_id = {str(r.id): r for r in results}
     checked = [g for g in gold if g.checked and str(g.id) in by_id]
     per_request = [field_counts(g, by_id[str(g.id)].ticket) for g in checked]
+    with_systems = [g for g in checked if g.systems_checked]
     seconds = sorted(r.seconds for r in results if r.seconds is not None)
     return department_report(
         name,
@@ -314,6 +333,15 @@ def model_report(
         else {},
         dropped=sum(len(r.dropped_identifiers) for r in results),
         tickets_with_dropped=sum(bool(r.dropped_identifiers) for r in results),
+        systems_gold=len(with_systems),
+        systems_exact=bootstrap(
+            [systems_exact(g, by_id[str(g.id)].ticket) for g in with_systems],
+            statistics.fmean,
+            rounds,
+            seed,
+        )
+        if with_systems
+        else None,
         added=sum(len(r.added_identifiers) for r in results),
         when_filled=sum(r.when_from_rule is not None for r in results),
         seconds_median=statistics.median(seconds) if seconds else None,
@@ -354,9 +382,9 @@ def render(set_name: str, reports: Sequence[SystemReport]) -> str:
             "",
             f"## {set_name}: fields (gold subset): F1 (range), P / R",
             "",
-            "| System | Gold | " + " | ".join(FIELDS) + " | Identifiers dropped · added "
-            "| 'when' from a rule |",
-            "|---|---|" + "---|" * (len(FIELDS) + 2),
+            "| System | Gold | " + " | ".join(FIELDS) + " | Systems exact (gold) "
+            "| Identifiers dropped · added | 'when' from a rule |",
+            "|---|---|" + "---|" * (len(FIELDS) + 3),
         ]
         for r in models:
             cells = [
@@ -365,9 +393,10 @@ def render(set_name: str, reports: Sequence[SystemReport]) -> str:
                 for f in FIELDS
             ]
             changed = f"{r.dropped} in {r.tickets_with_dropped} of {r.requests} tickets · {r.added}"
+            exact = f"{cell(r.systems_exact)} ({r.systems_gold})" if r.systems_gold else "—"
             lines.append(
                 f"| {r.name} | {r.gold} | "
                 + " | ".join(cells)
-                + f" | {changed} | {r.when_filled} |"
+                + f" | {exact} | {changed} | {r.when_filled} |"
             )
     return "\n".join(lines) + "\n"

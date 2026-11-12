@@ -278,3 +278,13 @@ def test_admin_saves_a_ticket_without_identifiers(admin_client):
     assert response.status_code == 302, response.context["adminform"].form.errors
     ticket.refresh_from_db()
     assert ticket.department_id == "software"
+
+
+def test_filter_and_page_show_systems(client, ivan):
+    vpn = make_ticket(systems=["vpn"])
+    make_ticket(systems=["email"])
+    client.force_login(ivan)
+    rows = client.get(reverse("desk") + "?list=all&system=vpn").context["rows"]
+    assert [t.pk for t, _ in rows] == [vpn.pk]
+    page = client.get(reverse("desk_ticket", kwargs={"pk": vpn.pk})).content.decode()
+    assert '<span class="tag">VPN</span>' in page

@@ -20,6 +20,7 @@ from megatron.settings import Settings
 TICKET = {
     "who": "Петрова",
     "where": "каб. 305",
+    "systems": [],
     "when": "с утра",
     "what": "Принтер не печатает, замятие бумаги",
     "identifiers": [],

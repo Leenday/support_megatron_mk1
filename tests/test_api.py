@@ -91,6 +91,7 @@ def test_create_ticket_with_a_token(client, bot):
     assert body["status_url"] == f"http://testserver/status/{saved.pk}-{saved.access_code}/"
     [ticket] = body["tickets"]
     assert ticket["department"] == "network"
+    assert ticket["systems"] == ["vpn"]
     assert ticket["status"] == "new"
     assert ticket["id"] == saved.tickets.get().pk
     assert ApiToken.objects.get().last_used_at is not None

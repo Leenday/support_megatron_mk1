@@ -1,7 +1,7 @@
 from django import forms
 from django.utils.translation import gettext_lazy as _
 
-from support.models import Department, Ticket
+from support.models import Department, System, Ticket
 
 
 class RequestForm(forms.Form):
@@ -38,12 +38,21 @@ class DeskFilterForm(forms.Form):
         choices=[("", _("Any"))] + Ticket.Status.choices,
     )
     tag = forms.CharField(label=_("Tag"), required=False, max_length=50)
+    system = forms.ChoiceField(label=_("System"), required=False)
     since = forms.DateField(
         label=_("From"), required=False, widget=forms.DateInput(attrs={"type": "date"})
     )
     until = forms.DateField(
         label=_("To"), required=False, widget=forms.DateInput(attrs={"type": "date"})
     )
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        field = self.fields["system"]
+        assert isinstance(field, forms.ChoiceField)
+        field.choices = [("", _("Any"))] + [
+            (x.id, x.name) for x in System.objects.filter(active=True)
+        ]
 
 
 class TicketEditForm(forms.Form):

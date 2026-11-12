@@ -41,7 +41,8 @@ from megatron.llm import (
 from megatron.prompt import PROMPT_VERSION
 from megatron.routing import route
 from megatron.settings import Settings
-from megatron.testset import load_gold
+from megatron.systems import find_systems
+from megatron.testset import load_gold, write_gold
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -81,6 +82,12 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="also score every results file with the rules applied: the shape filter that the "
         "extractor uses, and with the additions (missed codes, 'when' from a date) (#35)",
+    )
+    parser.add_argument(
+        "--draft-systems",
+        action="store_true",
+        help="fill `systems` of the gold tickets not yet checked from the spellings of the "
+        "vocabulary in DEPARTMENTS_PATH, then stop; review them and set systems_checked (#34)",
     )
     parser.add_argument("--rounds", type=int, default=1000, help="bootstrap resamples (1000)")
     parser.add_argument("--seed", type=int, default=0)
@@ -143,6 +150,21 @@ def main(argv: list[str] | None = None) -> int:
     train = load_requests(args.train or args.set / "dev.jsonl")
     gold_path = args.set / ("gold-dev.yaml" if dev else "gold.yaml")
     gold = load_gold(gold_path) if gold_path.exists() else []
+
+    if args.draft_systems:
+        systems = load_departments(Settings().departments_path).systems
+        if not systems:
+            print("error: the departments config has no systems vocabulary", file=sys.stderr)
+            return 2
+        drafted = []
+        for g in gold:
+            if not g.systems_checked:
+                g = g.model_copy(update={"systems": find_systems(g.text, systems)})
+            drafted.append(g)
+        write_gold(gold_path, drafted)
+        todo = sum(not g.systems_checked for g in drafted)
+        print(f"{gold_path}: systems drafted for {todo} tickets; check them, set systems_checked")
+        return 0
 
     if args.run:
         settings = Settings().with_llm(args.backend, args.model)

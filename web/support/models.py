@@ -105,6 +105,34 @@ class Department(models.Model):
         return self.name_ru if language == "ru" else self.name_en
 
 
+class System(models.Model):
+    """A system or channel of the domain with its spellings (#34): the ticket's `systems`.
+
+    The model sees the active ones as an enum, like the departments, so it cannot invent a
+    system; "where" stays free text next to it.
+    """
+
+    id = models.CharField(
+        primary_key=True,
+        max_length=50,
+        validators=[RegexValidator(r"^[a-z][a-z0-9_]*$", "lowercase letters, digits and _")],
+        help_text="Stable id: the model returns it, and the YAML import matches by it.",
+    )
+    name = models.CharField(max_length=200)
+    spellings = models.JSONField(
+        default=list,
+        help_text="How requests write it: names, abbreviations, transliterations. "
+        "The model reads them.",
+    )
+    active = models.BooleanField(default=True, help_text="Inactive systems are not offered.")
+
+    class Meta:
+        ordering = ["id"]
+
+    def __str__(self) -> str:
+        return self.name
+
+
 class RoutingSettings(models.Model):
     """One row: the routing weights and ticket languages of `config/departments.yaml`."""
 
@@ -180,6 +208,7 @@ class Ticket(models.Model):
     request = models.ForeignKey(Request, on_delete=models.CASCADE, related_name="tickets")
     who = models.TextField(null=True, blank=True)
     where = models.TextField(null=True, blank=True)
+    systems = models.JSONField(default=list, blank=True, help_text="System ids, see System.")
     when = models.TextField(null=True, blank=True)
     what = models.TextField()
     # blank: an empty list is a valid answer, and the admin form must accept it (#19).

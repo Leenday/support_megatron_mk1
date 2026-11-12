@@ -18,12 +18,21 @@ from pydantic import BaseModel, Field
 
 from megatron.departments import Department as DepartmentConfig
 from megatron.departments import DepartmentsConfig, RoutingWeights, load_departments
+from megatron.departments import System as SystemConfig
 from megatron.llm import BackendError, ExtractionError, Extractor, build_extractor
 from megatron.prompt import PROMPT_VERSION
 from megatron.routing import route, score_candidates
 from megatron.settings import Settings
 from megatron.ticket import RoutedTicket
-from support.models import Department, Request, RoutingSettings, Ticket, TicketEvent, User
+from support.models import (
+    Department,
+    Request,
+    RoutingSettings,
+    System,
+    Ticket,
+    TicketEvent,
+    User,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -68,6 +77,10 @@ def departments_config() -> DepartmentsConfig:
                 fallback=d.fallback,
             )
             for d in departments
+        ],
+        systems=[
+            SystemConfig(id=x.id, name=x.name, spellings=x.spellings)
+            for x in System.objects.filter(active=True)
         ],
     )
 
@@ -206,6 +219,13 @@ def import_departments(config: DepartmentsConfig) -> dict[str, int]:
     counts["deactivated"] = (
         Department.objects.filter(active=True).exclude(id__in=config.ids).update(active=False)
     )
+    # Systems are imported the same way: by id, missing ones deactivated (#34).
+    for x in config.systems:
+        System.objects.update_or_create(
+            id=x.id, defaults={"name": x.name, "spellings": x.spellings, "active": True}
+        )
+    System.objects.filter(active=True).exclude(id__in=config.system_ids).update(active=False)
+    counts["systems"] = len(config.systems)
     routing = RoutingSettings.load()
     routing.w_match = config.routing.w_match
     routing.w_load = config.routing.w_load
@@ -228,6 +248,8 @@ def export_departments() -> str:
     for d in data["departments"]:
         if not d["fallback"]:
             del d["fallback"]
+    if not data["systems"]:
+        del data["systems"]
     header = (
         f"# Exported from the service database on {timezone.localtime():%Y-%m-%d %H:%M %Z}"
         " (manage.py export_departments).\n"
