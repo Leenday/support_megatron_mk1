@@ -12,7 +12,7 @@ urlpatterns = [
     path(
         "login/",
         auth_views.LoginView.as_view(
-            template_name="support/login.html", authentication_form=DeskLoginForm, next_page="desk"
+            template_name="support/login.html", authentication_form=DeskLoginForm
         ),
         name="login",
     ),

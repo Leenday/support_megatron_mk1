@@ -46,9 +46,18 @@ docker compose exec web python web/manage.py export_departments out/departments.
 ```
 
 The migrations seed the initial Admin account (`test@test.test`). The admin panel at
-`/admin/` uses email and password. Both staff roles can open the panel home page, and the
-Admin role can manage staff accounts and assign specialists to departments. When creating a
-Django superuser with the command above, provide an email address for panel sign-in.
+`/admin/` uses email and password. Admins manage Requester, Specialist and Admin accounts,
+assign specialists to active departments, and manage departments and routing settings. The
+departments list shows open tickets, capacity usage and routing accuracy. Accuracy divides
+confirmed decisions by all decisions with specialist feedback, counting each return against
+its source department. Use **Export departments to YAML** from that list to download the
+current routing config. The ticket list supports search, filters, editing and reassignment
+with an audit history. The request log includes a filter for failed extractions.
+
+Only admins and Django superusers can sign in at `/admin/`. Specialists use `/login/`
+and `/desk/`. Requester accounts are optional for the public request form. Provide an email
+address when creating a Django superuser for panel sign-in. To issue an API token by email,
+use `create_api_token --email <address>`.
 
 On the first start `web` migrates the database and imports the departments from `DEPARTMENTS_PATH`. From then on the database is the source of truth: departments are edited in the admin panel, `import_departments <file>` updates them by id (a department missing from the file is deactivated, never deleted), and `export_departments` writes them back as a config for the CLI and the evaluation, with the current load as `open_tickets`. The load used by routing is the department's open tickets (New, In progress) over its capacity. Every request is saved with its contact and extraction log, and a failed one with its error. Staff roles are the groups Specialist and Admin. Requesters need no account: the form at `/` takes the text and a contact, makes the ticket while the page waits and redirects to a status page at `/status/<request>-<code>/`, where the random code keeps other people's requests unreadable; submissions are limited per address (`REQUEST_FORM_RATE`). The pages follow the browser's language (RU / EN switch in the header); our strings are translated in `web/locale/ru/` (`cd web && python manage.py makemessages -l ru --no-location`, then `compilemessages`; the compiled `.mo` is committed, since the image has no gettext). Staff log in at `/login/` and work in the dashboard at `/desk/`: a specialist (group Specialist with a department) sees the queue of the department's new tickets, oldest first, with their tags and age, "My tickets" and all of the department's tickets, filtered by status, tag and date; an admin sees every department. On a ticket's page are the extracted fields, the original message and the history. "Take" makes the ticket the specialist's and moves it to In progress (the row is locked, so two specialists cannot take one ticket). The assignee edits the fields, with the old and new values recorded, and closes the ticket, answering "Was the department right?" (yes, or the right department). "Return" sends the ticket, as New, to the model's best candidate that has not had it yet, then to the fallback department. The answers and returns are the accuracy in operation (#16), and `taken_at` and `closed_at` the triage time (#43). The JSON API (Django Ninja) gives the CLI's results over HTTP, documented in Swagger UI at `/api/docs` (schema `/api/openapi.json`): `POST /api/extract` (text → routed ticket, nothing saved), `POST /api/tickets` (saved like a form request; 201 with the number, the status link and the ticket, 502 with the number when the model gives no ticket), `GET /api/tickets?status=&department=&limit=&offset=` and `/api/tickets/{id}` (admins see all tickets, specialists their department's, accounts without a role, such as an integration, their own), `GET /api/departments` (with the current load). It takes the browser session or a personal token from `create_api_token`; only its hash is stored, and it is revoked by deleting it in the admin:
 

@@ -65,7 +65,6 @@ DATABASES = {
 
 # Swapping the user model later is not supported by Django, so it is custom from the start.
 AUTH_USER_MODEL = "support.User"
-LOGIN_REDIRECT_URL = "admin:index"
 
 AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},
@@ -76,6 +75,7 @@ AUTH_PASSWORD_VALIDATORS = [
 
 # Staff log in at /login/ and land on the dashboard; requesters never log in (#17).
 LOGIN_URL = "login"
+LOGIN_REDIRECT_URL = "desk"
 LOGOUT_REDIRECT_URL = "login"
 
 # The interface follows the browser's language (LocaleMiddleware); Russian otherwise.
