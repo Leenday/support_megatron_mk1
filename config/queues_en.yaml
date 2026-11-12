@@ -91,3 +91,24 @@ departments:
     tags: [general, question, other]
     language: en
     fallback: true
+
+# Systems vocabulary (#34). The data set is synthetic and names a different product in most
+# requests, so these are product categories rather than one company's systems; built from
+# the dev part.
+systems:
+  - {id: healthcare_systems, name: Healthcare systems, spellings: [hospital systems, hospital, medical data, medical information, patient data, healthcare system, EHR]}
+  - {id: security_software, name: Security software, spellings: [antivirus, McAfee, Norton, Kaspersky, Bitdefender, firewall, security software, encryption]}
+  - {id: analytics, name: Data analytics, spellings: [data analytics, analytics tools, analytics, Tableau, Power BI, dashboard]}
+  - {id: marketing, name: Digital marketing, spellings: [digital marketing, digital strategy, marketing, SEO, campaign, brand]}
+  - {id: saas_platform, name: SaaS platform, spellings: [SaaS, SaaS platform, cloud platform, digital platform]}
+  - {id: ecommerce, name: E-commerce platform, spellings: [Shopify, WooCommerce, Magento, online store, e-commerce]}
+  - {id: accounting_software, name: Accounting software, spellings: [QuickBooks, Xero, accounting software]}
+  - {id: design_software, name: Design software, spellings: [AutoCAD, Adobe, Photoshop, Figma]}
+  - {id: video_conferencing, name: Video conferencing, spellings: [Zoom, Microsoft Teams, Webex, webcam, StreamCam, videoconferencing, video conferencing, screen recorder]}
+  - {id: network, name: Network, spellings: [network, VPN, router, Wi-Fi, wifi]}
+  - {id: servers, name: Servers and cloud, spellings: [server, cloud, AWS, Azure, database]}
+  - {id: email, name: Email, spellings: [email, e-mail, Outlook, Gmail]}
+  - {id: website, name: Website, spellings: [website, web site, landing page]}
+  - {id: mobile_app, name: Mobile app, spellings: [mobile app, iOS, Android]}
+  - {id: crm, name: CRM, spellings: [CRM, Salesforce, HubSpot]}
+  - {id: devices, name: Devices and peripherals, spellings: [printer, laptop, monitor, keyboard, smartphone, tablet]}

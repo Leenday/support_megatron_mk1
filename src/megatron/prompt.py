@@ -30,6 +30,8 @@ You turn a support request into a ticket.
 """
 
 
+# A stricter variant ("not a guessed cause, the topic, the industry ...", tried as v5 on dev,
+# 12.11) changed nothing beyond run-to-run noise, so the simpler wording stays.
 SYSTEMS_INSTRUCTION = """\
 - "systems": the ids of the systems below that the request is about: where the problem is,
   and both ends of an integration ("A -> B"). Recognise them by meaning and by any of their

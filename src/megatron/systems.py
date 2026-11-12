@@ -9,10 +9,10 @@ from functools import cache
 
 from megatron.departments import System
 
-# A spelling matches as a whole word or with a short ending, so inflected Russian forms count
-# ("Телеграме", "вотсапе") but longer words starting with a short spelling do not
-# ("максимально" is not "Макс").
-ENDING = r"[a-zа-яё]{0,2}"
+# A spelling matches as a whole word or with a case ending, so inflected forms count
+# ("Телеграме", "вотсапе", "printers") but other words that start with a short spelling do
+# not: "вам" is not "ВА", "Максим" and "максимально" are not "Макс".
+ENDING = r"(?:а|у|е|ом|ой|ы|и|ах|ам|ов|ей|ю|я|s|es)?"
 
 
 @cache

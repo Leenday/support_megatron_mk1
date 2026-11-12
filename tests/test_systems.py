@@ -42,6 +42,8 @@ def test_duplicate_system_ids_rejected(departments):
         ("Не открывается общая сетевая папка", ["network_drive"]),
         ("Не могу зайти в 1С", ["erp_1c"]),
         ("максимально срочно, помогите", []),  # a short spelling inside a longer word
+        ("Максим из бухгалтерии, вам звонил", []),
+        ("Printers on floor 3 are offline", ["printer"]),
         ("помогите пожалуйста", []),
     ],
 )
