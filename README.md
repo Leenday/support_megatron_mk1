@@ -54,6 +54,16 @@ curl -X POST localhost:8000/api/tickets -H "Authorization: Bearer $TOKEN" \
 
 Without Docker: `uv run python web/manage.py migrate` (SQLite in `web/db.sqlite3` when `DATABASE_URL` is empty), then `import_departments config/departments.yaml` and `runserver`.
 
+**Acceptance check.** [e2e/acceptance.py](e2e/acceptance.py) clicks through the iteration 2 user stories in a real browser as the requester, two specialists and the admin, against the service in Docker with Postgres, and writes one result per story with screenshots to `out/acceptance/` (results of the last run: [docs/testing-iteration2.md](docs/testing-iteration2.md)). It drives the installed Google Chrome with Playwright, which is not a project dependency:
+
+```bash
+LLM_BACKEND=fake DJANGO_DEBUG=true docker compose -p megatron-e2e up -d --build web
+docker compose -p megatron-e2e exec -e DJANGO_SUPERUSER_PASSWORD=<password> web \
+  python web/manage.py createsuperuser --noinput --username boss --email boss@example.com
+uvx --with playwright python -I e2e/acceptance.py --password <password>
+docker compose -p megatron-e2e down -v     # the check's own database, apart from the development one
+```
+
 **Departments and data.** [config/departments.yaml](config/departments.yaml) lists the routing targets (departments, queues, support lines or categories): `languages` (ticket languages, default `[ru, en]`) and optional load (`capacity`, `open_tickets`: for all departments or none). Another domain or dataset is another config file, selected with `DEPARTMENTS_PATH`. `--file` reads `.txt` (one request per line) or `.jsonl`, one `{"id": ..., "text": "...", "expected": "<department id>"}` per line: the text may span several lines, other keys are ignored, and with `expected` the CLI marks each answer ✓/✗ against the model's best-fit department and prints `department correct: N/M`. Real requests and downloaded datasets go to `data/local/`: git and Docker ignore it, a pre-commit hook refuses to commit it, and compose sees it as `data/local/` (`docker compose run --rm megatron --file data/local/requests.jsonl`).
 
 **Test sets.** `megatron-testset` turns a ticket export (`.csv` or `.jsonl`) into request files for `--file`: it joins the text columns, cleans export noise (HTML entities, `<br>`, markdown, `[image]`), removes what gives the answer away (`--strip-tracker-keys` for keys like `PROJ-123` and links to them, `--leak REGEX` for anything else), turns the label column into department ids (`Technical Support` → `technical_support`), samples at most `--per-label` requests per label and splits them into `dev.jsonl` (prompt tuning, 30 %) and `test.jsonl` (reported numbers) with the same label proportions. Columns recorded after the request (answer, resolution, assignee) are never read. It also writes `gold.yaml`, a draft of the gold subset (30 test requests, labels in turn): identifiers and dates found by regular expressions, to be completed and checked by hand (`checked: true`); a rerun never overwrites it. The English set comes from the public dataset [Tobi-Bueck/customer-support-tickets](https://huggingface.co/datasets/Tobi-Bueck/customer-support-tickets) (synthetic, CC BY-NC 4.0), with its queues in [config/queues_en.yaml](config/queues_en.yaml):

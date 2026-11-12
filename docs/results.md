@@ -64,6 +64,10 @@ Measured on 2026-11-10 with `megatron-eval <set> --rules`: the rules only post-p
 - **Additions: off.** The model already finds 0.91–0.93 of the identifiers, and the patterns also catch numbers that the gold does not count as identifiers (4–6-digit numbers, anonymisation placeholders, codes): on the gold subset 8 of 57 additions were right. "When" from a date never fired on RU, where the model fills it; on EN it filled 4–6 tickets and lowered the "when" F1 from 0.67 to 0.50 (one gold request, not meaningful). The additions stay in `megatron/rules.py` (`add=True`) to be measured again on new sets.
 - Department accuracy and the other fields do not change: the rules touch only identifiers and "when".
 
+## Departments from the database (#19)
+
+On 2026-11-11 the evaluation was rerun on configs exported from the service database (`export_departments`): RU department accuracy 0.93 (0.87–0.99), the same as with the YAML; EN 0.27 (0.18–0.35) against 0.28; the fields move within their ranges. Details: [testing-iteration2.md](testing-iteration2.md).
+
 ## Choice of model
 
 **gpt-5.4-mini with prompt v3** is the model for iteration 2.

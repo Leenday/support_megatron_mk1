@@ -11,7 +11,8 @@ from django.core.management import call_command
 from django.test import override_settings
 
 from megatron.departments import DepartmentsConfig, load_departments
-from megatron.llm import Extractor, FakeExtractor, Messages
+from megatron.llm import Extractor, FakeExtractor, Messages, build_extractor
+from megatron.settings import Settings
 from support.models import ROLES, Department, Request, RoutingSettings, Ticket, TicketEvent
 from support.services import (
     create_ticket,
@@ -176,6 +177,17 @@ def test_failed_extraction_keeps_the_request(imported):
     assert Request.objects.filter(pk=request.pk).exists()
     assert "no valid ticket after 3 attempts" in request.error
     assert not request.tickets.exists()
+
+
+def test_unconfigured_backend_keeps_the_request(imported):
+    """#19: without an API key the form gave a 500 and the request was lost."""
+    settings = Settings(_env_file=None, llm_backend="openai", openai_api_key=None)
+    request = create_ticket(
+        "text", extractor_factory=lambda config: build_extractor(config, settings)
+    )
+    assert Request.objects.filter(pk=request.pk).exists()
+    assert "OPENAI_API_KEY" in request.error
+    assert request.model == ""
 
 
 def test_inactive_department_is_not_offered(imported):

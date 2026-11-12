@@ -151,7 +151,11 @@ def main(argv: list[str] | None = None) -> int:
         if unknown:
             print(f"error: {unknown} are not in {settings.departments_path}", file=sys.stderr)
             return 2
-        extractor = build_extractor(config, settings)
+        try:
+            extractor = build_extractor(config, settings)
+        except BackendError as e:
+            print(f"error: {e}", file=sys.stderr)
+            return 1
         path = out / f"{args.name or model_slug(extractor.model)}.jsonl"
         if not run_backend(extractor, config, test[: args.limit], path):
             return 1

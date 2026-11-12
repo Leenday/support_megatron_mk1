@@ -151,7 +151,7 @@ class OpenAIExtractor(Extractor):
         if create is None:
             api_key = settings.openai_api_key.get_secret_value() if settings.openai_api_key else ""
             if not api_key:
-                raise ValueError("LLM_BACKEND=openai needs OPENAI_API_KEY")
+                raise BackendError("LLM_BACKEND=openai needs OPENAI_API_KEY")
             client = openai.OpenAI(api_key=api_key, base_url=base_url, timeout=120)
             create = client.chat.completions.create
         self.create: Callable[..., Any] = create

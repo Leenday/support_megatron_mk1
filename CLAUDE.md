@@ -12,6 +12,7 @@ Free-text support request (RU/EN) → validated JSON ticket (who, where, when, w
 - `uv run megatron "text"` — CLI (`--file requests.txt`, `-o out/result.json`; JSON Lines with `--file`; `--backend openai --model gpt-5.4-nano` override `.env`, also in `megatron-eval`)
 - `uv run megatron-testset export.csv --text subject,body --label queue --out data/local/en` — test set from a ticket export: dev/test JSONL + `gold.yaml` draft (README "Test sets")
 - `uv run megatron-eval data/local/en --run` — run the backend on `test.jsonl` (resumable) and report departments, fields on gold, baselines (majority, TF-IDF) with bootstrap ranges → `out/eval/<set>/report.md`; without `--run` only the report. Docker: `docker compose run --rm eval ...`; prompt tuning only on dev: `--part dev --name <variant>` (bump `PROMPT_VERSION` in `prompt.py` on every prompt change)
+- `uvx --with playwright python -I e2e/acceptance.py --password <superuser password>` — acceptance check of the user stories in Chrome against `docker compose -p megatron-e2e up web` (README "Acceptance check")
 - `docker compose run --rm demo` (data/demo_requests.jsonl → tickets, ✓/✗ against `expected`) · `docker compose run --rm megatron "text"` · `docker compose run --rm tests`
 - `docker compose up web` — Django + Postgres on :8000 (needs `DJANGO_SECRET_KEY` or `DJANGO_DEBUG=true`); `python web/manage.py import_departments|export_departments <yaml>`, `create_api_token <user>`; API docs at `/api/docs`; `LLM_BACKEND=fake` works without a model or key
 
