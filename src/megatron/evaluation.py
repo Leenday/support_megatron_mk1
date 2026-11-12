@@ -20,13 +20,18 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.linear_model import LogisticRegression
 from sklearn.pipeline import make_pipeline
 
+from megatron.departments import System
 from megatron.inputs import Request
 from megatron.rules import apply_rules
+from megatron.systems import find_systems
 from megatron.testset import GoldTicket
 from megatron.ticket import RoutedTicket, Ticket
 
 TEXT_FIELDS = ("who", "where", "when", "what")
-FIELDS = (*TEXT_FIELDS, "identifiers", "systems")
+# "where" again, also matching when both texts name the same systems of the vocabulary (#34):
+# its misses were mostly one system spelled differently ("амо → тг" / "amoCRM → Telegram").
+WHERE_VOCAB = "where (vocab)"
+FIELDS = (*TEXT_FIELDS, WHERE_VOCAB, "identifiers", "systems")
 
 # A free-text field matches the gold value when their word overlap (token F1) reaches this.
 MATCH_THRESHOLD = 0.5
@@ -137,11 +142,14 @@ class Counts:
         return 2 * self.tp / (2 * self.tp + errors) if self.tp + errors else None
 
 
-def field_counts(gold: GoldTicket, ticket: Ticket | None) -> dict[str, Counts]:
+def field_counts(
+    gold: GoldTicket, ticket: Ticket | None, systems: Sequence[System] = ()
+) -> dict[str, Counts]:
     """Counts per field for one request; no ticket (a failure) is an empty ticket.
 
     A free-text value that does not match the gold one is both a false positive (a wrong
     value was given) and a false negative (the right one was missed), as in slot filling.
+    `systems` is the vocabulary for "where (vocab)"; without it that field is not scored.
     """
     counts = {}
     for field in TEXT_FIELDS:
@@ -154,6 +162,7 @@ def field_counts(gold: GoldTicket, ticket: Ticket | None) -> dict[str, Counts]:
             fp=int(given is not None and not hit),
             fn=int(expected is not None and not hit),
         )
+    counts[WHERE_VOCAB] = where_vocab_counts(gold, ticket, systems) if systems else Counts()
     expected_ids = {normalize_identifier(i) for i in gold.identifiers}
     given_ids = {normalize_identifier(i) for i in ticket.identifiers} if ticket else set()
     given_ids.discard("")
@@ -174,6 +183,41 @@ def field_counts(gold: GoldTicket, ticket: Ticket | None) -> dict[str, Counts]:
     else:
         counts["systems"] = Counts()
     return counts
+
+
+def where_vocab_counts(
+    gold: GoldTicket, ticket: Ticket | None, systems: Sequence[System]
+) -> Counts:
+    """ "where" matched by words, or by naming the same (non-empty) set of vocabulary systems.
+
+    Both texts are reduced to the systems they spell, like a normaliser that maps "WIN 3" and
+    "winder #3" to one machine id (session 03); different details of one system still miss.
+    """
+    expected = gold.where or None
+    given = ((ticket.where or "").strip() or None) if ticket else None
+    hit = expected is not None and given is not None
+    if hit and token_f1(expected, given) < MATCH_THRESHOLD:
+        named = set(find_systems(expected, list(systems)))
+        hit = bool(named) and named == set(find_systems(given, list(systems)))
+    return Counts(
+        tp=int(hit), fp=int(given is not None and not hit), fn=int(expected is not None and not hit)
+    )
+
+
+def unmatched_where(
+    results: Sequence[Result], gold: Sequence[GoldTicket], systems: Sequence[System]
+) -> Counter[str]:
+    """ "where" values that name no system of the vocabulary: candidates to extend it.
+
+    An unknown value is reported, never mapped to the nearest system (session 03).
+    """
+    values = [g.where for g in gold if g.checked] + [r.ticket.where for r in results if r.ticket]
+    return Counter(v.strip() for v in values if v and outside_vocabulary(v, systems))
+
+
+def outside_vocabulary(where: str | None, systems: Sequence[System]) -> bool:
+    """A non-empty "where" that names none of the vocabulary's systems."""
+    return bool(where and where.strip()) and not find_systems(where or "", list(systems))
 
 
 def systems_exact(gold: GoldTicket, ticket: Ticket | None) -> bool:
@@ -284,6 +328,9 @@ class SystemReport(BaseModel):
     when_filled: int = 0
     systems_gold: int = 0
     systems_exact: Score | None = None
+    where_outside: int | None = Field(
+        default=None, description="model tickets whose 'where' names no vocabulary system"
+    )
     seconds_median: float | None = None
     seconds_p90: float | None = None
 
@@ -303,13 +350,18 @@ def department_report(
 
 
 def model_report(
-    name: str, results: Sequence[Result], gold: Sequence[GoldTicket], rounds: int, seed: int
+    name: str,
+    results: Sequence[Result],
+    gold: Sequence[GoldTicket],
+    rounds: int,
+    seed: int,
+    systems: Sequence[System] = (),
 ) -> SystemReport:
     pairs = [(r.expected or "", r.best_fit) for r in results]
     tickets = [r for r in results if r.ticket]
     by_id = {str(r.id): r for r in results}
     checked = [g for g in gold if g.checked and str(g.id) in by_id]
-    per_request = [field_counts(g, by_id[str(g.id)].ticket) for g in checked]
+    per_request = [field_counts(g, by_id[str(g.id)].ticket, systems) for g in checked]
     with_systems = [g for g in checked if g.systems_checked]
     seconds = sorted(r.seconds for r in results if r.seconds is not None)
     return department_report(
@@ -334,6 +386,11 @@ def model_report(
         dropped=sum(len(r.dropped_identifiers) for r in results),
         tickets_with_dropped=sum(bool(r.dropped_identifiers) for r in results),
         systems_gold=len(with_systems),
+        where_outside=sum(
+            outside_vocabulary(r.ticket.where if r.ticket else None, systems) for r in tickets
+        )
+        if systems
+        else None,
         systems_exact=bootstrap(
             [systems_exact(g, by_id[str(g.id)].ticket) for g in with_systems],
             statistics.fmean,
@@ -383,8 +440,8 @@ def render(set_name: str, reports: Sequence[SystemReport]) -> str:
             f"## {set_name}: fields (gold subset): F1 (range), P / R",
             "",
             "| System | Gold | " + " | ".join(FIELDS) + " | Systems exact (gold) "
-            "| Identifiers dropped · added | 'when' from a rule |",
-            "|---|---|" + "---|" * (len(FIELDS) + 3),
+            "| 'where' outside the vocabulary | Identifiers dropped · added | 'when' from a rule |",
+            "|---|---|" + "---|" * (len(FIELDS) + 4),
         ]
         for r in models:
             cells = [
@@ -397,6 +454,6 @@ def render(set_name: str, reports: Sequence[SystemReport]) -> str:
             lines.append(
                 f"| {r.name} | {r.gold} | "
                 + " | ".join(cells)
-                + f" | {exact} | {changed} | {r.when_filled} |"
+                + f" | {exact} | {cell(r.where_outside)} | {changed} | {r.when_filled} |"
             )
     return "\n".join(lines) + "\n"

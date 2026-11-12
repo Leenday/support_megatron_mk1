@@ -81,6 +81,7 @@ DEPARTMENTS_PATH=config/queues_en.yaml uv run megatron --file data/local/en/test
 - department: accuracy and macro-F1 of the model's best fit, the share of requests whose expected department is among the candidates, valid answers (and valid on the first attempt), seconds per request (median, 90th percentile);
 - fields on the checked gold subset: precision, recall and F1 per field. Free-text fields match when their word overlap (token F1 over word stems) is at least 0.5, identifiers are compared as sets; a failed request counts as an empty ticket, so failures lower recall;
 - systems (#34): F1 over the sets of system ids and the share of exact matches, on gold tickets marked `systems_checked`; `--draft-systems` fills their `systems` from the vocabulary's spellings for a hand check;
+- "where (vocab)": "where" also counted as right when both texts name the same systems of the vocabulary (different spellings of one system), with the vocabulary of `DEPARTMENTS_PATH` (a gold naming other systems turns it off with a note); "where" values naming no system are listed in `where-outside-vocabulary.tsv` next to the report, as candidates for the vocabulary;
 - dropped identifiers: how often the guardrails removed identifiers that are not in the request text or are plain words (the shape filter of [src/megatron/rules.py](src/megatron/rules.py), #35: an identifier has a digit, or is an e-mail, a placeholder or a login like `a.smirnova`);
 - 95 % bootstrap ranges, since the sets are small.
 

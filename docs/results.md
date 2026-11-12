@@ -77,7 +77,8 @@ Measured on 2026-11-12. The department config got a vocabulary of systems with t
 | EN, prompt v4 | 0.73 (0.63–0.83) | 0.59 / 0.96 | 0.57 (0.40–0.73) | 0.84 | 0.27 |
 | EN, spellings only (no model) | 0.76 | 0.68 / 0.88 | 0.73 | — | — |
 
-- **RU: the place of the problem is now measurable and filterable.** The model names the right set of systems in 0.73 of the gold requests and reaches F1 0.91, slightly above matching the spellings alone (0.88). That baseline is favoured here: the gold drafts came from it. Free-text "where" is unchanged (0.64): the vocabulary did not make the model word it more consistently, so the "where" target stays open, and the normalised `systems` is the field to count and filter by.
+- **RU: the place of the problem is now measurable and filterable.** The model names the right set of systems in 0.73 of the gold requests and reaches F1 0.91, slightly above matching the spellings alone (0.88). That baseline is favoured here: the gold drafts came from it. Free-text "where" is unchanged (0.64): the vocabulary did not make the model word it more consistently.
+- **"where" scored with the vocabulary.** Following the course (session 03: "Winder 3" / "WIN 3" / "winder #3" is a normalisation problem, measured on the canonical id; session 08: gold answers with aliases), "where (vocab)" counts a "where" as right when the words match, as before, **or** both texts name the same non-empty set of vocabulary systems ("амо → тг" = "amoCRM → Telegram"; one of two systems is still a miss). RU: **0.81 (0.67–0.93)** with prompt v4 and 0.78 with v3, against 0.64 by words alone, so the misses were spellings, not wrong places. EN does not change (0.84): its misses are not spellings. "where" values naming no system are counted (RU v4: 9 of 69 tickets) and listed in `out/eval/<set>/where-outside-vocabulary.tsv` as candidates for the vocabulary; it is extended from new requests, not from the test part.
 - **EN: the model adds categories.** Recall is 0.96, but precision 0.59: it also tags a guessed cause ("server overload") or the topic (security). Spelling matching is as good or better here; the EN labels are categories assigned by meaning, so they are less certain than the RU ones.
 - Department accuracy and the other fields stay within their ranges (RU "what" 0.97 → 0.87 and "who" 0.95 → 0.98 move within the ranges of 30 requests).
 
@@ -103,6 +104,6 @@ On 2026-11-11 the evaluation was rerun on configs exported from the service data
 | Time to ticket (story 3) | ≤ 10 s | 1.6 s median, 1.9 s p90 | met |
 | "who", "what" F1 (story 8) | ≥ 0.90 | 0.95, 0.97 | met |
 | "when", identifiers F1 | ≥ 0.85 | 0.87, 0.92 (with the shape filter, #35) | met |
-| "where" F1 | ≥ 0.75 | 0.64; the normalised `systems`: F1 0.91, exact 0.73 (#34) | open: free text unchanged |
+| "where" F1 | ≥ 0.75 | by words 0.64; with the vocabulary 0.81 (0.67–0.93); `systems` F1 0.91 (#34) | met with the vocabulary (lower range end 0.67); by words open |
 | Triage time, request → ticket in work (business goal) | −30 % | — | measured in #43 |
 | Local model as an alternative (story 30) | ≥ 0.85 accuracy, ≤ 10 s | 0.29, ~3 min (qwen3:1.7b, CPU) | open: #44 |
