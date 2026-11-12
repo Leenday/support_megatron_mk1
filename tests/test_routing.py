@@ -7,6 +7,7 @@ from megatron.ticket import Ticket
 TICKET = {
     "who": None,
     "where": None,
+    "systems": [],
     "when": None,
     "what": "VPN drops every few minutes",
     "identifiers": [],

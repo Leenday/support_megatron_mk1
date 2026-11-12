@@ -17,9 +17,10 @@ import logging
 import re
 import sys
 import time
+from collections import Counter
 from pathlib import Path
 
-from megatron.departments import DepartmentsConfig, load_departments
+from megatron.departments import DepartmentsConfig, System, load_departments
 from megatron.evaluation import (
     Result,
     department_report,
@@ -28,6 +29,7 @@ from megatron.evaluation import (
     model_report,
     render,
     tfidf_baseline,
+    unmatched_where,
     with_rules,
 )
 from megatron.inputs import Request, load_requests
@@ -41,7 +43,8 @@ from megatron.llm import (
 from megatron.prompt import PROMPT_VERSION
 from megatron.routing import route
 from megatron.settings import Settings
-from megatron.testset import load_gold
+from megatron.systems import find_systems
+from megatron.testset import GoldTicket, load_gold, write_gold
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -81,6 +84,12 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="also score every results file with the rules applied: the shape filter that the "
         "extractor uses, and with the additions (missed codes, 'when' from a date) (#35)",
+    )
+    parser.add_argument(
+        "--draft-systems",
+        action="store_true",
+        help="fill `systems` of the gold tickets not yet checked from the spellings of the "
+        "vocabulary in DEPARTMENTS_PATH, then stop; review them and set systems_checked (#34)",
     )
     parser.add_argument("--rounds", type=int, default=1000, help="bootstrap resamples (1000)")
     parser.add_argument("--seed", type=int, default=0)
@@ -129,6 +138,26 @@ def run_backend(
     return True
 
 
+def vocabulary_for(gold: list[GoldTicket]) -> list[System]:
+    """The systems vocabulary of DEPARTMENTS_PATH, if it fits the set's gold.
+
+    Scoring "where (vocab)" with another set's vocabulary would be silently wrong, so a gold
+    that names systems outside it turns the vocabulary off, with a note.
+    """
+    path = Settings().departments_path
+    systems = load_departments(path).systems if path.exists() else []
+    named = {s for g in gold if g.systems_checked for s in g.systems}
+    unknown = named - {s.id for s in systems}
+    if systems and unknown:
+        print(
+            f"note: the gold names systems {sorted(unknown)} that are not in {path}; "
+            "'where (vocab)' is not scored. Set DEPARTMENTS_PATH to this set's config.",
+            file=sys.stderr,
+        )
+        return []
+    return systems
+
+
 def model_slug(model: str) -> str:
     return re.sub(r"[^\w.-]+", "-", model).strip("-")
 
@@ -143,6 +172,21 @@ def main(argv: list[str] | None = None) -> int:
     train = load_requests(args.train or args.set / "dev.jsonl")
     gold_path = args.set / ("gold-dev.yaml" if dev else "gold.yaml")
     gold = load_gold(gold_path) if gold_path.exists() else []
+
+    if args.draft_systems:
+        systems = load_departments(Settings().departments_path).systems
+        if not systems:
+            print("error: the departments config has no systems vocabulary", file=sys.stderr)
+            return 2
+        drafted = []
+        for g in gold:
+            if not g.systems_checked:
+                g = g.model_copy(update={"systems": find_systems(g.text, systems)})
+            drafted.append(g)
+        write_gold(gold_path, drafted)
+        todo = sum(not g.systems_checked for g in drafted)
+        print(f"{gold_path}: systems drafted for {todo} tickets; check them, set systems_checked")
+        return 0
 
     if args.run:
         settings = Settings().with_llm(args.backend, args.model)
@@ -175,22 +219,29 @@ def main(argv: list[str] | None = None) -> int:
         department_report(name, list(zip(truth, predicted, strict=True)), args.rounds, args.seed)
         for name, predicted in baselines.items()
     ]
+    systems = vocabulary_for(gold)
+    unmatched: Counter[str] = Counter()
     for path in paths:
         results = load_results(path)
         if len(results) < len(test):
             print(f"note: {path} has {len(results)} of {len(test)} requests", file=sys.stderr)
-        reports.append(model_report(path.stem, results, gold, args.rounds, args.seed))
+        reports.append(model_report(path.stem, results, gold, args.rounds, args.seed, systems))
+        unmatched.update(unmatched_where(results, gold, systems) if systems else {})
         if args.rules:
             # The rules only post-process an answer: no model call is needed to measure them.
             for suffix, add in ((" + rules", False), (" + rules + additions", True)):
                 changed = with_rules(results, add=add)
                 reports.append(
-                    model_report(path.stem + suffix, changed, gold, args.rounds, args.seed)
+                    model_report(path.stem + suffix, changed, gold, args.rounds, args.seed, systems)
                 )
 
     report = render(name, reports)
     print("\n" + report)
     out.mkdir(parents=True, exist_ok=True)
+    if unmatched:
+        # Next to the report (git-ignored): the values may come from private requests.
+        lines = [f"{n}\t{value}" for value, n in unmatched.most_common()]
+        (out / "where-outside-vocabulary.tsv").write_text("\n".join(lines) + "\n", encoding="utf-8")
     (out / "report.md").write_text(report, encoding="utf-8")
     print(f"saved to {out / 'report.md'}")
     return 0

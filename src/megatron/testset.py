@@ -172,6 +172,10 @@ class GoldTicket(BaseModel):
     when: str | None = None
     what: str | None = None
     identifiers: list[str] = []
+    # Added after the other fields were checked (#34), so it has its own review mark;
+    # `megatron-eval --draft-systems` fills it from the spellings of the vocabulary.
+    systems: list[str] = []
+    systems_checked: bool = False
 
 
 def draft_gold(request: Request) -> GoldTicket:

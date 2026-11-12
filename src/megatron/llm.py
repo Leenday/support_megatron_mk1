@@ -22,6 +22,7 @@ from megatron.departments import DepartmentsConfig
 from megatron.prompt import build_system_prompt
 from megatron.rules import apply_rules
 from megatron.settings import Settings
+from megatron.systems import find_systems
 from megatron.ticket import (
     Ticket,
     build_ticket_model,
@@ -199,6 +200,7 @@ class FakeExtractor(Extractor):
         ticket = {
             "who": None,
             "where": None,
+            "systems": find_systems(text, self.config.systems),
             "when": None,
             "what": first_sentence[:200],
             "identifiers": [],

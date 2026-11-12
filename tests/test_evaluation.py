@@ -5,6 +5,7 @@ import pytest
 
 from megatron import eval_cli
 from megatron.evaluation import (
+    WHERE_VOCAB,
     Counts,
     Result,
     accuracy,
@@ -23,12 +24,13 @@ from megatron.inputs import Request
 from megatron.llm import OllamaExtractor
 from megatron.prompt import PROMPT_VERSION
 from megatron.settings import Settings
-from megatron.testset import GoldTicket, write_gold
+from megatron.testset import GoldTicket, load_gold, write_gold
 from megatron.ticket import RoutedTicket
 
 TICKET = {
     "who": "Anna Petrova, accounting",
     "where": "room 305",
+    "systems": [],
     "when": "since this morning",
     "what": "The printer shows a paper jam error and does not print",
     "identifiers": ["PRN-305"],
@@ -321,3 +323,70 @@ def test_cli_dev_part_uses_dev_gold_and_no_baselines(
     assert "## set-dev: department" in report
     assert "majority" not in report
     assert "| prompt-v9 | 1 | " in report  # fields scored on gold-dev.yaml
+
+
+def test_systems_are_scored_only_on_checked_gold():
+    given = ticket(systems=["printer", "network"])
+    unchecked = GOLD.model_copy(update={"systems": ["printer"]})
+    assert field_counts(unchecked, given)["systems"] == Counts()
+    checked = unchecked.model_copy(update={"systems_checked": True})
+    assert field_counts(checked, given)["systems"] == Counts(tp=1, fp=1)
+    report = model_report("m", [Result(id=1, request="x", ticket=given)], [checked], 10, 1)
+    assert report.systems_gold == 1
+    assert report.systems_exact is not None and report.systems_exact.value == 0.0
+
+
+def test_cli_drafts_gold_systems_from_spellings(tmp_path, monkeypatch, departments_path):
+    monkeypatch.setenv("DEPARTMENTS_PATH", str(departments_path))
+    reviewed = GOLD.model_copy(
+        update={"id": 2, "text": "VPN down", "systems": [], "systems_checked": True}
+    )
+    write_set(
+        tmp_path / "set",
+        [{"id": 1, "text": "x", "expected": "hardware"}],
+        [GOLD.model_copy(update={"text": "Принтер и VPN не работают"}), reviewed],
+    )
+    assert eval_cli.main([str(tmp_path / "set"), "--draft-systems"]) == 0
+    drafted, kept = load_gold(tmp_path / "set" / "gold.yaml")
+    assert (drafted.systems, drafted.systems_checked) == (["vpn", "printer"], False)
+    assert kept.systems == []  # a reviewed one is left alone
+
+
+def test_where_counts_the_same_systems_spelled_differently(departments):
+    gold = GOLD.model_copy(update={"where": "впн и почта"})
+    spelled = ticket(where="VPN, Outlook")  # no shared words, the same two systems
+    partly = ticket(where="VPN")  # one of the two systems: still a miss
+    assert field_counts(gold, spelled)["where"] == Counts(fp=1, fn=1)
+    assert field_counts(gold, spelled, departments.systems)[WHERE_VOCAB] == Counts(tp=1)
+    assert field_counts(gold, partly, departments.systems)[WHERE_VOCAB] == Counts(fp=1, fn=1)
+    assert field_counts(gold, spelled)[WHERE_VOCAB] == Counts()  # no vocabulary, not scored
+
+
+def test_cli_scores_where_with_the_vocabulary_and_lists_the_rest(
+    tmp_path, monkeypatch, departments_path
+):
+    monkeypatch.setenv("DEPARTMENTS_PATH", str(departments_path))
+    gold = GOLD.model_copy(update={"where": "впн", "systems": ["vpn"], "systems_checked": True})
+    write_set(tmp_path / "set", [{"id": 1, "text": "x", "expected": "hardware"}], [gold])
+    out = tmp_path / "eval"
+    out.mkdir()
+    saved = Result(id=1, request="x", expected="hardware", ticket=ticket(where="VPN"))
+    other = Result(id=2, request="y", expected="hardware", ticket=ticket(where="room 305"))
+    lines = "".join(r.model_dump_json() + "\n" for r in (saved, other))
+    (out / "m.jsonl").write_text(lines, encoding="utf-8")
+
+    assert eval_cli.main([str(tmp_path / "set"), "--out", str(out), "--rounds", "10"]) == 0
+    report = (out / "report.md").read_text(encoding="utf-8")
+    assert "where (vocab)" in report
+    assert "| m | 1 | " in report
+    assert (out / "where-outside-vocabulary.tsv").read_text(encoding="utf-8") == "1\troom 305\n"
+
+
+def test_cli_does_not_score_where_with_another_sets_vocabulary(
+    tmp_path, monkeypatch, capsys, departments_path
+):
+    monkeypatch.setenv("DEPARTMENTS_PATH", str(departments_path))
+    gold = GOLD.model_copy(update={"systems": ["amocrm"], "systems_checked": True})
+    write_set(tmp_path / "set", [{"id": 1, "text": "x", "expected": "hardware"}], [gold])
+    assert eval_cli.main([str(tmp_path / "set"), "--out", str(tmp_path / "eval")]) == 0
+    assert "not in" in capsys.readouterr().err

@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-11-10 18:13+0300\n"
+"POT-Creation-Date: 2026-11-12 08:06+0300\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: Russian\n"
@@ -84,6 +84,9 @@ msgstr "Любой"
 
 msgid "Tag"
 msgstr "Тег"
+
+msgid "System"
+msgstr "Система"
 
 msgid "From"
 msgstr "С"
@@ -182,6 +185,9 @@ msgstr "Заявок нет."
 msgid "Ticket #%(number)s"
 msgstr "Заявка №%(number)s"
 
+msgid "Systems"
+msgstr "Системы"
+
 msgid "Identifiers"
 msgstr "Идентификаторы"
 
@@ -236,9 +242,6 @@ msgstr "Сохранить"
 
 msgid "History"
 msgstr "История"
-
-msgid "System"
-msgstr "Система"
 
 msgid "Log in"
 msgstr "Войти"

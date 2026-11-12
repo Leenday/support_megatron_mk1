@@ -12,6 +12,7 @@
       <dt>{% translate "Department" %}</dt><dd>{{ department }}</dd>
       <dt>{% translate "Who" %}</dt><dd>{{ ticket.who|default:"—" }}</dd>
       <dt>{% translate "Where" %}</dt><dd>{{ ticket.where|default:"—" }}</dd>
+      <dt>{% translate "Systems" %}</dt><dd>{% for name in systems %}<span class="tag">{{ name }}</span>{% empty %}—{% endfor %}</dd>
       <dt>{% translate "When" %}</dt><dd>{{ ticket.when|default:"—" }}</dd>
       <dt>{% translate "What" %}</dt><dd>{{ ticket.what }}</dd>
       <dt>{% translate "Identifiers" %}</dt><dd>{{ ticket.identifiers|join:", "|default:"—" }}</dd>

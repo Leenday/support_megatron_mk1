@@ -3,7 +3,16 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
 
-from support.models import ApiToken, Department, Request, RoutingSettings, Ticket, TicketEvent, User
+from support.models import (
+    ApiToken,
+    Department,
+    Request,
+    RoutingSettings,
+    System,
+    Ticket,
+    TicketEvent,
+    User,
+)
 
 
 class StaffAdmin(UserAdmin):
@@ -15,7 +24,7 @@ class StaffAdmin(UserAdmin):
 
 
 admin.site.register(User, StaffAdmin)
-admin.site.register([Department, RoutingSettings, Request, Ticket, TicketEvent])
+admin.site.register([Department, System, RoutingSettings, Request, Ticket, TicketEvent])
 
 
 @admin.register(ApiToken)
