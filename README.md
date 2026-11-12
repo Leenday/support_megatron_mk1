@@ -137,13 +137,13 @@ gantt
     section 2 · Service
     Django project, data models, roles and load-aware routing [15] :done, t15, 2026-11-07, 2026-11-11
     Django admin users, roles, departments, all tickets [16] :t16, 2026-11-14, 2026-11-18
-    Open request form and status by link [17] :t17, 2026-11-12, 2026-11-16
-    Specialist dashboard take tickets and change statuses [18] :t18, 2026-11-16, 2026-11-24
+    Open request form and status by link [17] :done, t17, 2026-11-12, 2026-11-16
+    Specialist dashboard take tickets and change statuses [18] :done, t18, 2026-11-16, 2026-11-24
     Iteration 2 testing [19] :t19, 2026-11-23, 2026-11-27
-    JSON API with OpenAPI (Swagger) docs [42] :t42, 2026-11-10, 2026-11-13
+    JSON API with OpenAPI (Swagger) docs [42] :done, t42, 2026-11-10, 2026-11-13
     Measure triage time manual vs automatic [43] :t43, 2026-11-20, 2026-11-27
     Systems vocabulary a normalised 'system' next to free-text 'where' [34] :t34, 2026-11-21, 2026-11-25
-    Rule-based check and extraction of identifiers and dates [35] :t35, 2026-11-19, 2026-11-21
+    Rule-based check and extraction of identifiers and dates [35] :done, t35, 2026-11-19, 2026-11-21
     Service done :milestone, m2, 2026-11-27, 0d
     section 3 · Final
     Translation RU ↔ EN (if time allows) [23] :t23, 2026-11-28, 2026-12-05
@@ -153,6 +153,7 @@ gantt
     Local models on a GPU qwen3 4b / 8b [44] :t44, 2026-11-28, 2026-12-05
     Design note split a request across departments [45] :t45, 2026-11-28, 2026-12-07
     Fact-check ticket claims against the request (if time allows) [36] :t36, 2026-11-28, 2026-12-05
+    Systems vocabulary from specialists' answers, approved by a Validator [57] :t57, 2026-11-28, 2026-12-07
     Final done :milestone, m3, 2026-12-14, 0d
 ```
 
@@ -176,20 +177,21 @@ gantt
 | [#31](https://github.com/Leenday/support_megatron_mk1/issues/31) | Generalize for other domains and datasets | 2026-10-29 | 2026-11-01 | Denis | ✅ |
 | [#15](https://github.com/Leenday/support_megatron_mk1/issues/15) | Django project, data models, roles and load-aware routing | 2026-11-07 | 2026-11-11 | Denis | ✅ |
 | [#16](https://github.com/Leenday/support_megatron_mk1/issues/16) | Django admin: users, roles, departments, all tickets | 2026-11-14 | 2026-11-18 | Roman |  |
-| [#17](https://github.com/Leenday/support_megatron_mk1/issues/17) | Open request form and status by link | 2026-11-12 | 2026-11-16 | Denis |  |
-| [#18](https://github.com/Leenday/support_megatron_mk1/issues/18) | Specialist dashboard: take tickets and change statuses | 2026-11-16 | 2026-11-24 | Denis |  |
+| [#17](https://github.com/Leenday/support_megatron_mk1/issues/17) | Open request form and status by link | 2026-11-12 | 2026-11-16 | Denis | ✅ |
+| [#18](https://github.com/Leenday/support_megatron_mk1/issues/18) | Specialist dashboard: take tickets and change statuses | 2026-11-16 | 2026-11-24 | Denis | ✅ |
 | [#23](https://github.com/Leenday/support_megatron_mk1/issues/23) | Translation RU <-> EN (if time allows) | 2026-11-28 | 2026-12-05 | Denis |  |
 | [#19](https://github.com/Leenday/support_megatron_mk1/issues/19) | Iteration 2 testing | 2026-11-23 | 2026-11-27 | All |  |
 | [#20](https://github.com/Leenday/support_megatron_mk1/issues/20) | Voice input with Whisper (optional) | 2026-11-28 | 2026-12-05 | Denis |  |
 | [#21](https://github.com/Leenday/support_megatron_mk1/issues/21) | Final metrics and report | 2026-11-28 | 2026-12-10 | All |  |
 | [#22](https://github.com/Leenday/support_megatron_mk1/issues/22) | Final presentation | 2026-12-07 | 2026-12-14 | All |  |
-| [#42](https://github.com/Leenday/support_megatron_mk1/issues/42) | JSON API with OpenAPI (Swagger) docs | 2026-11-10 | 2026-11-13 | Denis |  |
+| [#42](https://github.com/Leenday/support_megatron_mk1/issues/42) | JSON API with OpenAPI (Swagger) docs | 2026-11-10 | 2026-11-13 | Denis | ✅ |
 | [#43](https://github.com/Leenday/support_megatron_mk1/issues/43) | Measure triage time: manual vs automatic | 2026-11-20 | 2026-11-27 | Denis |  |
 | [#44](https://github.com/Leenday/support_megatron_mk1/issues/44) | Local models on a GPU: qwen3:4b / 8b | 2026-11-28 | 2026-12-05 | Denis |  |
 | [#45](https://github.com/Leenday/support_megatron_mk1/issues/45) | Design note: split a request across departments | 2026-11-28 | 2026-12-07 | Denis |  |
 | [#34](https://github.com/Leenday/support_megatron_mk1/issues/34) | Systems vocabulary: a normalised 'system' next to free-text 'where' | 2026-11-21 | 2026-11-25 | Denis |  |
-| [#35](https://github.com/Leenday/support_megatron_mk1/issues/35) | Rule-based check and extraction of identifiers and dates | 2026-11-19 | 2026-11-21 | Denis |  |
+| [#35](https://github.com/Leenday/support_megatron_mk1/issues/35) | Rule-based check and extraction of identifiers and dates | 2026-11-19 | 2026-11-21 | Denis | ✅ |
 | [#36](https://github.com/Leenday/support_megatron_mk1/issues/36) | Fact-check ticket claims against the request (if time allows) | 2026-11-28 | 2026-12-05 | Denis |  |
+| [#57](https://github.com/Leenday/support_megatron_mk1/issues/57) | Systems vocabulary from specialists' answers, approved by a Validator | 2026-11-28 | 2026-12-07 | Denis |  |
 
 ## Stages
 
