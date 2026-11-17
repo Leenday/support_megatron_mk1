@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="ru"><head><meta charset="utf-8"><title>Замер разбора</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+body{font:16px/1.45 system-ui,sans-serif;max-width:60rem;margin:1.5rem auto;padding:0 1rem;color:#222}
+.bar{display:flex;justify-content:space-between;align-items:center;color:#666}
+.mode{padding:.3rem .7rem;border-radius:.4rem;font-weight:600}
+.manual{background:#fff3d6}.service{background:#dcf2e3}
+#text{white-space:pre-wrap;background:#f6f6f6;padding:1rem;border-radius:.4rem;margin:1rem 0}
+label{display:block;margin:.6rem 0 .2rem;font-weight:600}
+input,select,textarea{width:100%;box-sizing:border-box;font:inherit;padding:.4rem}
+button{font:inherit;padding:.6rem 1.4rem;margin-top:1rem;cursor:pointer}
+.hint{color:#666;font-size:.9rem}
+details{margin-top:1rem}
+</style></head><body>
+<div class="bar"><span id="progress"></span><span id="mode" class="mode"></span></div>
+<div id="intro">
+  <p id="modehint"></p>
+  <p class="hint">Время идёт с момента, когда текст показан, до кнопки «Готово». Между
+  обращениями можно отдыхать: пока текст не показан, время не идёт. Отдел выбирайте так, как
+  выбрали бы на работе; поля — коротко, как в заявке.</p>
+  <button id="show">Показать обращение</button>
+</div>
+<form id="form" hidden>
+  <div id="text"></div>
+  <label for="department">Отдел</label>
+  <select id="department" required><option value="">— выберите —</option></select>
+  <label for="who">Кто</label><input id="who">
+  <label for="where">Где</label><input id="where">
+  <label for="when">Когда</label><input id="when">
+  <label for="what">Что случилось</label><textarea id="what" rows="2"></textarea>
+  <button>Готово</button>
+</form>
+<div id="done" hidden><h2>Готово, спасибо!</h2><p>Все обращения разобраны. Окно можно закрыть.</p></div>
+<details><summary>Описания отделов</summary><ul id="depts"></ul></details>
+<script>
+const FIELDS = ["who", "where", "when", "what"];
+const HINT = {
+  manual: "Разбор вручную: прочитайте обращение, выберите отдел и заполните поля.",
+  service: "Проверка заявки сервиса: отдел и поля уже заполнены моделью. Проверьте и исправьте то, что неверно."
+};
+let item = null, started = 0;
+const $ = id => document.getElementById(id);
+async function next() {
+  const state = await (await fetch("/api/next")).json();
+  if (!$("department").options.length || $("department").options.length === 1) {
+    for (const d of state.departments) {
+      $("department").add(new Option(d.name, d.id));
+      const li = document.createElement("li");
+      li.innerHTML = "<b></b>: <span></span>";
+      li.firstChild.textContent = d.name; li.lastChild.textContent = d.description;
+      $("depts").append(li);
+    }
+  }
+  item = state.item;
+  $("progress").textContent = `${state.done} / ${state.total}`;
+  if (!item) { $("intro").hidden = true; $("form").hidden = true; $("done").hidden = false; $("mode").hidden = true; return; }
+  $("mode").textContent = item.mode === "manual" ? "Вручную" : "Проверка сервиса";
+  $("mode").className = "mode " + item.mode;
+  $("modehint").textContent = HINT[item.mode];
+  $("intro").hidden = false; $("form").hidden = true;
+}
+$("show").onclick = () => {
+  $("text").textContent = item.text;
+  const f = item.fields || {};
+  $("department").value = f.department || "";
+  for (const k of FIELDS) $(k).value = f[k] || "";
+  $("intro").hidden = true; $("form").hidden = false;
+  started = performance.now();
+  window.scrollTo(0, 0);
+};
+$("form").onsubmit = async e => {
+  e.preventDefault();
+  const seconds = (performance.now() - started) / 1000;
+  const fields = {department: $("department").value || null};
+  for (const k of FIELDS) fields[k] = $(k).value.trim() || null;
+  const r = await fetch("/api/answer", {method: "POST", headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({id: item.id, mode: item.mode, seconds, fields})});
+  if (!r.ok) { alert("Не сохранилось: " + await r.text()); return; }
+  next();
+};
+next();
+</script></body></html>
