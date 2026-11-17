@@ -144,19 +144,21 @@ gantt
     Systems vocabulary a normalised 'system' next to free-text 'where' [34] :done, t34, 2026-11-21, 2026-11-25
     Rule-based check and extraction of identifiers and dates [35] :done, t35, 2026-11-19, 2026-11-21
     Service done :milestone, m2, 2026-11-13, 0d
-    section 3 · Final
+    section 3 · Validation
     Django admin users, roles, departments, all tickets [16] :t16, 2026-11-14, 2026-11-18
-    Translation RU ↔ EN (if time allows) [23] :t23, 2026-11-19, 2026-11-22
+    Translation RU ↔ EN (if time allows) [23] :t23, 2026-11-21, 2026-11-26
     Iteration 2 testing [19] :done, t19, 2026-11-18, 2026-11-20
-    Voice input with Whisper (optional) [20] :t20, 2026-11-21, 2026-11-24
-    Final metrics and report [21] :t21, 2026-11-21, 2026-11-25
-    Final presentation [22] :crit, t22, 2026-11-24, 2026-11-27
-    Measure triage time manual vs automatic [43] :t43, 2026-11-14, 2026-11-21
+    Measure triage time manual vs automatic [43] :done, t43, 2026-11-14, 2026-11-21
     Local models on a GPU qwen3 4b / 8b [44] :t44, 2026-11-17, 2026-11-21
     Design note split a request across departments [45] :t45, 2026-11-20, 2026-11-22
-    Fact-check ticket claims against the request (if time allows) [36] :t36, 2026-11-21, 2026-11-24
     Systems vocabulary from specialists' answers, approved by a Validator [57] :t57, 2026-11-14, 2026-11-20
-    Final done :milestone, m3, 2026-11-27, 0d
+    Validation done :milestone, m3, 2026-11-27, 0d
+    section 4 · Final
+    Voice input with Whisper (optional) [20] :t20, 2026-12-01, 2026-12-05
+    Final metrics and report [21] :t21, 2026-12-01, 2026-12-10
+    Final presentation [22] :crit, t22, 2026-12-07, 2026-12-14
+    Fact-check ticket claims against the request (if time allows) [36] :t36, 2026-11-28, 2026-12-03
+    Final done :milestone, m4, 2026-12-14, 0d
 ```
 
 | Issue | Task | Start | Due | Owner | Done |
@@ -181,18 +183,18 @@ gantt
 | [#16](https://github.com/Leenday/support_megatron_mk1/issues/16) | Django admin: users, roles, departments, all tickets | 2026-11-14 | 2026-11-18 | Roman |  |
 | [#17](https://github.com/Leenday/support_megatron_mk1/issues/17) | Open request form and status by link | 2026-11-12 | 2026-11-16 | Denis | ✅ |
 | [#18](https://github.com/Leenday/support_megatron_mk1/issues/18) | Specialist dashboard: take tickets and change statuses | 2026-11-16 | 2026-11-24 | Denis | ✅ |
-| [#23](https://github.com/Leenday/support_megatron_mk1/issues/23) | Translation RU <-> EN (if time allows) | 2026-11-19 | 2026-11-22 | Denis |  |
+| [#23](https://github.com/Leenday/support_megatron_mk1/issues/23) | Translation RU <-> EN (if time allows) | 2026-11-21 | 2026-11-26 | Denis |  |
 | [#19](https://github.com/Leenday/support_megatron_mk1/issues/19) | Iteration 2 testing | 2026-11-18 | 2026-11-20 | All | ✅ |
-| [#20](https://github.com/Leenday/support_megatron_mk1/issues/20) | Voice input with Whisper (optional) | 2026-11-21 | 2026-11-24 | Denis |  |
-| [#21](https://github.com/Leenday/support_megatron_mk1/issues/21) | Final metrics and report | 2026-11-21 | 2026-11-25 | All |  |
-| [#22](https://github.com/Leenday/support_megatron_mk1/issues/22) | Final presentation | 2026-11-24 | 2026-11-27 | All |  |
+| [#20](https://github.com/Leenday/support_megatron_mk1/issues/20) | Voice input with Whisper (optional) | 2026-12-01 | 2026-12-05 | Denis |  |
+| [#21](https://github.com/Leenday/support_megatron_mk1/issues/21) | Final metrics and report | 2026-12-01 | 2026-12-10 | All |  |
+| [#22](https://github.com/Leenday/support_megatron_mk1/issues/22) | Final presentation | 2026-12-07 | 2026-12-14 | All |  |
 | [#42](https://github.com/Leenday/support_megatron_mk1/issues/42) | JSON API with OpenAPI (Swagger) docs | 2026-11-10 | 2026-11-13 | Denis | ✅ |
-| [#43](https://github.com/Leenday/support_megatron_mk1/issues/43) | Measure triage time: manual vs automatic | 2026-11-14 | 2026-11-21 | Denis |  |
+| [#43](https://github.com/Leenday/support_megatron_mk1/issues/43) | Measure triage time: manual vs automatic | 2026-11-14 | 2026-11-21 | Denis | ✅ |
 | [#44](https://github.com/Leenday/support_megatron_mk1/issues/44) | Local models on a GPU: qwen3:4b / 8b | 2026-11-17 | 2026-11-21 | Denis |  |
 | [#45](https://github.com/Leenday/support_megatron_mk1/issues/45) | Design note: split a request across departments | 2026-11-20 | 2026-11-22 | Denis |  |
 | [#34](https://github.com/Leenday/support_megatron_mk1/issues/34) | Systems vocabulary: a normalised 'system' next to free-text 'where' | 2026-11-21 | 2026-11-25 | Denis | ✅ |
 | [#35](https://github.com/Leenday/support_megatron_mk1/issues/35) | Rule-based check and extraction of identifiers and dates | 2026-11-19 | 2026-11-21 | Denis | ✅ |
-| [#36](https://github.com/Leenday/support_megatron_mk1/issues/36) | Fact-check ticket claims against the request (if time allows) | 2026-11-21 | 2026-11-24 | Denis |  |
+| [#36](https://github.com/Leenday/support_megatron_mk1/issues/36) | Fact-check ticket claims against the request (if time allows) | 2026-11-28 | 2026-12-03 | Denis |  |
 | [#57](https://github.com/Leenday/support_megatron_mk1/issues/57) | Systems vocabulary from specialists' answers, approved by a Validator | 2026-11-14 | 2026-11-20 | Denis |  |
 
 ## Stages
@@ -202,6 +204,7 @@ gantt
 | 0 · Initiation and methods review | 2026-10-16 | Idea, first presentation, methods review, impact map, calendar plan. |
 | 1 · Console MVP | 2026-11-06 | Iteration 1: console app, text in -> JSON ticket out; test set and model comparison. |
 | 2 · Service | 2026-11-13 | Iteration 2: Django service with an open request form (no account for requesters) and two staff roles (specialist, admin): JSON API with OpenAPI docs, request form, specialist dashboard with statuses, load-aware routing from the database. Report on 2026-11-13; the extended admin panel (#16), the testing rerun with the v0.2.0 release (#19) and the triage-time measurement (#43) moved to iteration 3. |
-| 3 · Final | 2026-11-27 | Iteration 3 (2026-11-14 – 2026-11-27): finish the admin panel and release v0.2.0, measure the triage time, grow the systems vocabulary from specialists' answers (Validator), final metrics, report and presentation. If time allows: local models on a GPU, RU/EN translation, voice input, fact-check, splitting a request by department. |
+| 3 · Validation | 2026-11-27 | Iteration 3 (2026-11-14 – 2026-11-27), report on 2026-11-27 and release v0.3.0: finish the admin panel, release v0.2.0, measure the triage time, grow the systems vocabulary from specialists' answers (Validator), design note on splitting a request by department. If time allows: local models on a GPU, RU/EN translation. |
+| 4 · Final | 2026-12-14 | Final iteration (2026-11-28 – 2026-12-14): final metrics, report and presentation on 2026-12-14. If time allows: fact-check of ticket claims, voice input. |
 
-*Dates after 2026-10-16 are planned and may shift; iteration 2 was reported on 2026-11-13; iteration 3 ends on 2026-11-27.*
+*Dates after 2026-10-16 are planned and may shift; iteration 2 was reported on 2026-11-13; iteration 3 is reported on 2026-11-27; the final presentation is on 2026-12-14.*
