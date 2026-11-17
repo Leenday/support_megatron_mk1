@@ -145,7 +145,7 @@ gantt
     section 3 · Final
     Django admin users, roles, departments, all tickets [16] :t16, 2026-11-14, 2026-11-18
     Translation RU ↔ EN (if time allows) [23] :t23, 2026-11-19, 2026-11-22
-    Iteration 2 testing [19] :t19, 2026-11-18, 2026-11-20
+    Iteration 2 testing [19] :done, t19, 2026-11-18, 2026-11-20
     Voice input with Whisper (optional) [20] :t20, 2026-11-21, 2026-11-24
     Final metrics and report [21] :t21, 2026-11-21, 2026-11-25
     Final presentation [22] :crit, t22, 2026-11-24, 2026-11-27
@@ -180,7 +180,7 @@ gantt
 | [#17](https://github.com/Leenday/support_megatron_mk1/issues/17) | Open request form and status by link | 2026-11-12 | 2026-11-16 | Denis | ✅ |
 | [#18](https://github.com/Leenday/support_megatron_mk1/issues/18) | Specialist dashboard: take tickets and change statuses | 2026-11-16 | 2026-11-24 | Denis | ✅ |
 | [#23](https://github.com/Leenday/support_megatron_mk1/issues/23) | Translation RU <-> EN (if time allows) | 2026-11-19 | 2026-11-22 | Denis |  |
-| [#19](https://github.com/Leenday/support_megatron_mk1/issues/19) | Iteration 2 testing | 2026-11-18 | 2026-11-20 | All |  |
+| [#19](https://github.com/Leenday/support_megatron_mk1/issues/19) | Iteration 2 testing | 2026-11-18 | 2026-11-20 | All | ✅ |
 | [#20](https://github.com/Leenday/support_megatron_mk1/issues/20) | Voice input with Whisper (optional) | 2026-11-21 | 2026-11-24 | Denis |  |
 | [#21](https://github.com/Leenday/support_megatron_mk1/issues/21) | Final metrics and report | 2026-11-21 | 2026-11-25 | All |  |
 | [#22](https://github.com/Leenday/support_megatron_mk1/issues/22) | Final presentation | 2026-11-24 | 2026-11-27 | All |  |
