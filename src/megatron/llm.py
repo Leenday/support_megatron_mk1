@@ -7,7 +7,9 @@ the model (`Extractor.complete`); the backend is picked by `LLM_BACKEND`.
 """
 
 import argparse
+import json
 import logging
+import re
 from abc import ABC, abstractmethod
 from collections.abc import Callable
 from typing import Any, Protocol
@@ -18,7 +20,9 @@ from pydantic import BaseModel, Field, ValidationError
 
 from megatron.departments import DepartmentsConfig
 from megatron.prompt import build_system_prompt
+from megatron.rules import apply_rules
 from megatron.settings import Settings
+from megatron.systems import find_systems
 from megatron.ticket import (
     Ticket,
     build_ticket_model,
@@ -29,6 +33,8 @@ from megatron.ticket import (
 logger = logging.getLogger(__name__)
 
 Messages = list[dict[str, str]]
+
+STEM = 5  # FakeExtractor: words match by their first letters, so "принтер" = "принтера"
 
 
 class ExtractionError(RuntimeError):
@@ -45,7 +51,8 @@ class Extraction(BaseModel):
     ticket: Ticket
     attempts: int
     dropped_identifiers: list[str] = Field(
-        description="identifiers the model gave that are not in the request text"
+        description="identifiers the model gave that are not in the request text or do not "
+        "look like identifiers (plain words)"
     )
 
 
@@ -82,10 +89,12 @@ class Extractor(ABC):
             else:
                 quoted = keep_quoted_identifiers(ticket, text)
                 dropped = [i for i in ticket.identifiers if i not in quoted.identifiers]
+                checked, rules = apply_rules(quoted, text)
+                dropped += rules.shape_dropped
                 if dropped:
-                    logger.info("dropped identifiers not in the request: %s", dropped)
+                    logger.info("dropped identifiers: %s", dropped)
                 return Extraction(
-                    ticket=keep_fallback_alone(quoted, self.fallback),
+                    ticket=keep_fallback_alone(checked, self.fallback),
                     attempts=attempt,
                     dropped_identifiers=dropped,
                 )
@@ -143,7 +152,7 @@ class OpenAIExtractor(Extractor):
         if create is None:
             api_key = settings.openai_api_key.get_secret_value() if settings.openai_api_key else ""
             if not api_key:
-                raise ValueError("LLM_BACKEND=openai needs OPENAI_API_KEY")
+                raise BackendError("LLM_BACKEND=openai needs OPENAI_API_KEY")
             client = openai.OpenAI(api_key=api_key, base_url=base_url, timeout=120)
             create = client.chat.completions.create
         self.create: Callable[..., Any] = create
@@ -165,12 +174,52 @@ class OpenAIExtractor(Extractor):
         return response.choices[0].message.content or ""
 
 
+class FakeExtractor(Extractor):
+    """No model: departments by keyword match with their tags and names, else the fallback.
+
+    For developing the service without an API key or a GPU, and for its tests. The answer
+    still goes through validation and the guardrails like a real one.
+    """
+
+    def __init__(self, config: DepartmentsConfig, max_retries: int = 0) -> None:
+        super().__init__(config, "fake", "fake", max_retries)
+        self.config = config
+
+    def complete(self, messages: Messages, schema: dict[str, Any]) -> str:
+        text = messages[-1]["content"]
+        words = {w[:STEM] for w in re.findall(r"\w+", text.lower())}
+        hits: dict[str, list[str]] = {}
+        for d in self.config.departments:
+            keywords = [*d.tags, *re.findall(r"\w+", f"{d.name_en} {d.name_ru}".lower())]
+            matched = [k for k in keywords if k.lower()[:STEM] in words and len(k) > 2]
+            if matched and not d.fallback:
+                hits[d.id] = matched
+        ranked = sorted(hits, key=lambda d: -len(hits[d]))[: len(self.config.routing.rank_match)]
+        first_sentence = re.split(r"(?<=[.!?])\s|\n", text.strip(), maxsplit=1)[0]
+        cyrillic = re.search(r"[а-яё]", text.lower()) and "ru" in self.config.languages
+        ticket = {
+            "who": None,
+            "where": None,
+            "systems": find_systems(text, self.config.systems),
+            "when": None,
+            "what": first_sentence[:200],
+            "identifiers": [],
+            "summary": " ".join(text.split()[:10]),
+            "tags": [t for d in ranked for t in hits[d]][:6] or ["request"],
+            "candidates": ranked or [self.config.fallback.id],
+            "language": "ru" if cyrillic else self.config.languages[0],
+        }
+        return json.dumps(ticket, ensure_ascii=False)
+
+
 def build_extractor(config: DepartmentsConfig, settings: Settings) -> Extractor:
     match settings.llm_backend:
         case "ollama":
             return OllamaExtractor(config, settings)
         case "openai":
             return OpenAIExtractor(config, settings)
+        case "fake":
+            return FakeExtractor(config)
         case _:
             raise NotImplementedError(
                 f"LLM backend {settings.llm_backend!r} is not implemented yet"
@@ -180,7 +229,9 @@ def build_extractor(config: DepartmentsConfig, settings: Settings) -> Extractor:
 def add_llm_arguments(parser: argparse.ArgumentParser) -> None:
     """--backend and --model: pick the model for one run without editing .env."""
     parser.add_argument(
-        "--backend", choices=["ollama", "openai"], help="LLM backend (default: LLM_BACKEND)"
+        "--backend",
+        choices=["ollama", "openai", "fake"],
+        help="LLM backend (default: LLM_BACKEND); fake = keyword matching, no model",
     )
     parser.add_argument(
         "--model", help="model of the backend (default: OLLAMA_MODEL or OPENAI_MODEL)"

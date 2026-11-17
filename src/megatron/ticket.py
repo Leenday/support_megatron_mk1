@@ -14,6 +14,7 @@ from pydantic import BaseModel, ConfigDict, Field, create_model, field_validator
 from megatron.departments import DepartmentsConfig
 
 CANDIDATES_DESCRIPTION = "Ids of the departments that could handle the ticket, best fit first"
+SYSTEMS_DESCRIPTION = "Ids of the systems from the vocabulary the request is about; empty if none"
 
 
 class Ticket(BaseModel):
@@ -30,6 +31,8 @@ class Ticket(BaseModel):
         description="System, service, channel or place of the problem in the request's words; "
         "null if unknown"
     )
+    # A default, so answers saved before #34 still load; the model's schema makes it required.
+    systems: list[str] = Field(default=[], description=SYSTEMS_DESCRIPTION)
     when: str | None = Field(description="When it happened, as stated; null if unknown")
     what: str = Field(description="What is wrong, in one short sentence")
     identifiers: list[str] = Field(
@@ -57,9 +60,17 @@ def build_ticket_model(config: DepartmentsConfig) -> type[Ticket]:
     # Built from runtime values on purpose: static checkers cannot follow it, Pydantic can.
     department_ids = Literal[tuple(config.ids)]  # ty: ignore[invalid-type-form]
     languages = Literal[tuple(config.languages)]  # ty: ignore[invalid-type-form]
+    if config.systems:
+        system_ids = Literal[tuple(config.system_ids)]  # ty: ignore[invalid-type-form]
+        systems = (list[system_ids], Field(description=SYSTEMS_DESCRIPTION))
+    else:
+        # No vocabulary: the field stays in the schema (strict mode lists every field) but
+        # can only be empty.
+        systems = (list[str], Field(max_length=0, description=SYSTEMS_DESCRIPTION))
     return create_model(
         "Ticket",
         __base__=Ticket,
+        systems=systems,
         candidates=(
             list[department_ids],
             Field(

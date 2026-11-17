@@ -1,5 +1,6 @@
-# Iteration 1: request text -> JSON ticket.
+# Iteration 1: request text -> JSON ticket. Iteration 2: the web service.
 #
+#   docker compose up web                     # Django on http://localhost:8000 with Postgres (#15)
 #   docker compose run --rm demo              # run data/demo_requests.jsonl (starts Ollama, pulls the model)
 #   docker compose run --rm megatron "text"   # one request
 #   docker compose run --rm demo -o out/demo.jsonl   # save results to ./out (JSON Lines)
@@ -11,7 +12,7 @@
 # small qwen3:1.7b (1.4 GB, ~2 GB RAM). Expect tens of seconds to minutes per request.
 # To use a native or remote Ollama instead, set OLLAMA_BASE_URL_DOCKER and run with --no-deps.
 # LLM_BACKEND=openai (key in .env): also --no-deps, Ollama is not needed.
-# Iteration 2 adds `web` (Django) and `db` (Postgres).
+# LLM_BACKEND=fake: keyword matching, no model and no key (development).
 
 x-app: &app
   build:
@@ -26,6 +27,10 @@ x-app: &app
     OPENAI_BASE_URL: ${OPENAI_BASE_URL:-}
     GIGACHAT_CREDENTIALS: ${GIGACHAT_CREDENTIALS:-}
     DEPARTMENTS_PATH: ${DEPARTMENTS_PATH:-config/departments.yaml}
+    DATABASE_URL: postgres://megatron:${POSTGRES_PASSWORD:-megatron}@db:5432/megatron
+    DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY:-}
+    DJANGO_DEBUG: ${DJANGO_DEBUG:-false}
+    DJANGO_ALLOWED_HOSTS: ${DJANGO_ALLOWED_HOSTS:-["localhost","127.0.0.1"]}
   volumes:
     - ./config:/app/config:ro
     - ./data:/app/data:ro
@@ -37,6 +42,38 @@ x-app: &app
       condition: service_completed_successfully
 
 services:
+  db:
+    image: postgres:17
+    environment:
+      POSTGRES_DB: megatron
+      POSTGRES_USER: megatron
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-megatron}
+    volumes:
+      - postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "megatron", "-d", "megatron"]
+      interval: 2s
+      timeout: 5s
+      retries: 15
+
+  # Migrates, seeds the departments from DEPARTMENTS_PATH on the first start only (then the
+  # database is the source of truth: edit them in the admin), and serves on port 8000 with
+  # the development server (--insecure: it also serves the admin's static files).
+  # Only Postgres is started with it; for LLM_BACKEND=ollama run `docker compose up web ollama`.
+  web:
+    <<: *app
+    entrypoint: ["sh", "-c"]
+    command:
+      - >-
+        python web/manage.py migrate --noinput &&
+        python web/manage.py import_departments "$$DEPARTMENTS_PATH" --if-empty &&
+        python web/manage.py runserver 0.0.0.0:8000 --insecure
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+
   ollama:
     image: ollama/ollama:0.40.7
     volumes:
@@ -79,7 +116,9 @@ services:
     volumes:
       - ./src:/app/src
       - ./tests:/app/tests
+      - ./web:/app/web
       - ./config:/app/config:ro
 
 volumes:
   ollama:
+  postgres:

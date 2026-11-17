@@ -6,6 +6,7 @@ from megatron.ticket import build_ticket_model, keep_fallback_alone, keep_quoted
 VALID = {
     "who": "Ivanov, accounting",
     "where": "room 214",
+    "systems": [],
     "when": "this morning",
     "what": "The printer does not print, shows a paper jam error.",
     "identifiers": ["HP-4015"],

@@ -40,6 +40,20 @@ class Department(BaseModel):
         return min(self.open_tickets / self.capacity, 1.0)
 
 
+class System(BaseModel):
+    """A system, channel or product of the domain, with the ways requests spell it (#34).
+
+    "where" stays free text; `systems` on the ticket names the systems from this vocabulary,
+    so tickets can be filtered and counted by system.
+    """
+
+    id: str = Field(pattern=r"^[a-z][a-z0-9_]*$")
+    name: str = Field(description="display name")
+    spellings: list[str] = Field(
+        min_length=1, description="how requests write it: names, abbreviations, transliterations"
+    )
+
+
 class RoutingWeights(BaseModel):
     w_match: float = Field(default=0.7, ge=0)
     w_load: float = Field(default=0.3, ge=0)
@@ -60,6 +74,7 @@ class DepartmentsConfig(BaseModel):
     )
     routing: RoutingWeights = RoutingWeights()
     departments: list[Department] = Field(min_length=1)
+    systems: list[System] = Field(default=[], description="vocabulary of systems; may be empty")
 
     @model_validator(mode="after")
     def _check_departments(self) -> Self:
@@ -76,6 +91,10 @@ class DepartmentsConfig(BaseModel):
         unknown = sorted({d.language for d in self.departments} - set(self.languages))
         if unknown:
             raise ValueError(f"department languages {unknown} are not in languages")
+        system_ids = [x.id for x in self.systems]
+        duplicates = sorted({i for i in system_ids if system_ids.count(i) > 1})
+        if duplicates:
+            raise ValueError(f"duplicate system ids: {duplicates}")
         # Routing compares loads across departments, so they must be known for all or none.
         if len({d.load is None for d in self.departments}) > 1:
             raise ValueError("give capacity and open_tickets for all departments or for none")
@@ -84,6 +103,10 @@ class DepartmentsConfig(BaseModel):
     @property
     def ids(self) -> list[str]:
         return [d.id for d in self.departments]
+
+    @property
+    def system_ids(self) -> list[str]:
+        return [x.id for x in self.systems]
 
     @property
     def fallback(self) -> Department:

@@ -80,7 +80,11 @@ def main(argv: list[str] | None = None) -> int:
         path = settings.departments_path
         print(f"error: expected departments {unknown} are not in {path}", file=sys.stderr)
         return 2
-    extractor = build_extractor(config, settings)
+    try:
+        extractor = build_extractor(config, settings)
+    except BackendError as e:
+        print(f"error: {e}", file=sys.stderr)
+        return 1
     print(f"model: {extractor.model} at {extractor.endpoint}", file=sys.stderr)
 
     results: list[dict[str, Any]] = []

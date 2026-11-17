@@ -13,6 +13,11 @@
 #                 the database. Give both for all departments, or leave them out everywhere.
 # language      — language the department's tickets are written in (one of `languages`)
 # fallback      — exactly one department receives requests that fit nowhere else
+#
+# systems       — optional vocabulary of the domain's systems and channels (#34). The ticket's
+#                 `systems` may only take these ids; the model sees the names and spellings,
+#                 so list the ways requests actually write a system (other alphabets,
+#                 abbreviations). "where" stays free text next to it.
 
 languages: [ru, en]
 
@@ -80,3 +85,15 @@ departments:
     capacity: 10
     open_tickets: 2
     fallback: true
+
+systems:
+  - {id: email, name: E-mail, spellings: [почта, e-mail, email, Outlook, Exchange]}
+  - {id: vpn, name: VPN, spellings: [VPN, впн]}
+  - {id: wifi, name: Wi-Fi, spellings: [Wi-Fi, wifi, вайфай, вай-фай, беспроводная сеть]}
+  - {id: network_drive, name: Network drive, spellings: [сетевая папка, сетевой диск, общая папка, network drive, shared folder]}
+  - {id: printer, name: Printer, spellings: [принтер, МФУ, сканер, printer, scanner]}
+  - {id: computer, name: Computer, spellings: [компьютер, ноутбук, ПК, монитор, computer, laptop, PC]}
+  - {id: account, name: Account, spellings: [учётная запись, учетная запись, логин, пароль, account, password]}
+  - {id: crm, name: CRM, spellings: [CRM, црм]}
+  - {id: erp_1c, name: 1С, spellings: [1С, 1C]}
+  - {id: telephony, name: Telephony, spellings: [телефония, IP-телефония, телефон, phone]}

@@ -20,12 +20,18 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.linear_model import LogisticRegression
 from sklearn.pipeline import make_pipeline
 
+from megatron.departments import System
 from megatron.inputs import Request
+from megatron.rules import apply_rules
+from megatron.systems import find_systems
 from megatron.testset import GoldTicket
 from megatron.ticket import RoutedTicket, Ticket
 
 TEXT_FIELDS = ("who", "where", "when", "what")
-FIELDS = (*TEXT_FIELDS, "identifiers")
+# "where" again, also matching when both texts name the same systems of the vocabulary (#34):
+# its misses were mostly one system spelled differently ("амо → тг" / "amoCRM → Telegram").
+WHERE_VOCAB = "where (vocab)"
+FIELDS = (*TEXT_FIELDS, WHERE_VOCAB, "identifiers", "systems")
 
 # A free-text field matches the gold value when their word overlap (token F1) reaches this.
 MATCH_THRESHOLD = 0.5
@@ -49,6 +55,8 @@ class Result(BaseModel):
     seconds: float | None = None
     attempts: int | None = None
     dropped_identifiers: list[str] = []
+    added_identifiers: list[str] = []
+    when_from_rule: str | None = None
 
     @property
     def best_fit(self) -> str | None:
@@ -58,6 +66,32 @@ class Result(BaseModel):
 def load_results(path: Path) -> list[Result]:
     lines = path.read_text(encoding="utf-8").splitlines()
     return [Result.model_validate_json(line) for line in lines if line.strip()]
+
+
+def with_rules(results: Sequence[Result], *, add: bool = False) -> list[Result]:
+    """The same answers with the rules applied: the shape filter, as `Extractor` does now,
+    and with `add` also the additions (missed codes, "when" from a date).
+
+    Results saved before the rules existed are measured with and without them; on newer ones
+    the shape filter changes nothing, since the rules are idempotent.
+    """
+    changed = []
+    for r in results:
+        if r.ticket is None:
+            changed.append(r)
+            continue
+        ticket, log = apply_rules(r.ticket, r.request, add=add)
+        changed.append(
+            r.model_copy(
+                update={
+                    "ticket": ticket,
+                    "dropped_identifiers": r.dropped_identifiers + log.shape_dropped,
+                    "added_identifiers": r.added_identifiers + log.added_identifiers,
+                    "when_from_rule": log.when_from_rule or r.when_from_rule,
+                }
+            )
+        )
+    return changed
 
 
 # --- Matching ------------------------------------------------------------------------------
@@ -108,11 +142,14 @@ class Counts:
         return 2 * self.tp / (2 * self.tp + errors) if self.tp + errors else None
 
 
-def field_counts(gold: GoldTicket, ticket: Ticket | None) -> dict[str, Counts]:
+def field_counts(
+    gold: GoldTicket, ticket: Ticket | None, systems: Sequence[System] = ()
+) -> dict[str, Counts]:
     """Counts per field for one request; no ticket (a failure) is an empty ticket.
 
     A free-text value that does not match the gold one is both a false positive (a wrong
     value was given) and a false negative (the right one was missed), as in slot filling.
+    `systems` is the vocabulary for "where (vocab)"; without it that field is not scored.
     """
     counts = {}
     for field in TEXT_FIELDS:
@@ -125,6 +162,7 @@ def field_counts(gold: GoldTicket, ticket: Ticket | None) -> dict[str, Counts]:
             fp=int(given is not None and not hit),
             fn=int(expected is not None and not hit),
         )
+    counts[WHERE_VOCAB] = where_vocab_counts(gold, ticket, systems) if systems else Counts()
     expected_ids = {normalize_identifier(i) for i in gold.identifiers}
     given_ids = {normalize_identifier(i) for i in ticket.identifiers} if ticket else set()
     given_ids.discard("")
@@ -133,7 +171,58 @@ def field_counts(gold: GoldTicket, ticket: Ticket | None) -> dict[str, Counts]:
         fp=len(given_ids - expected_ids),
         fn=len(expected_ids - given_ids),
     )
+    # Systems are vocabulary ids, compared as sets; only on gold whose systems were checked.
+    if gold.systems_checked:
+        expected_systems = set(gold.systems)
+        given_systems = set(ticket.systems) if ticket else set()
+        counts["systems"] = Counts(
+            tp=len(expected_systems & given_systems),
+            fp=len(given_systems - expected_systems),
+            fn=len(expected_systems - given_systems),
+        )
+    else:
+        counts["systems"] = Counts()
     return counts
+
+
+def where_vocab_counts(
+    gold: GoldTicket, ticket: Ticket | None, systems: Sequence[System]
+) -> Counts:
+    """ "where" matched by words, or by naming the same (non-empty) set of vocabulary systems.
+
+    Both texts are reduced to the systems they spell, like a normaliser that maps "WIN 3" and
+    "winder #3" to one machine id (session 03); different details of one system still miss.
+    """
+    expected = gold.where or None
+    given = ((ticket.where or "").strip() or None) if ticket else None
+    hit = expected is not None and given is not None
+    if hit and token_f1(expected, given) < MATCH_THRESHOLD:
+        named = set(find_systems(expected, list(systems)))
+        hit = bool(named) and named == set(find_systems(given, list(systems)))
+    return Counts(
+        tp=int(hit), fp=int(given is not None and not hit), fn=int(expected is not None and not hit)
+    )
+
+
+def unmatched_where(
+    results: Sequence[Result], gold: Sequence[GoldTicket], systems: Sequence[System]
+) -> Counter[str]:
+    """ "where" values that name no system of the vocabulary: candidates to extend it.
+
+    An unknown value is reported, never mapped to the nearest system (session 03).
+    """
+    values = [g.where for g in gold if g.checked] + [r.ticket.where for r in results if r.ticket]
+    return Counter(v.strip() for v in values if v and outside_vocabulary(v, systems))
+
+
+def outside_vocabulary(where: str | None, systems: Sequence[System]) -> bool:
+    """A non-empty "where" that names none of the vocabulary's systems."""
+    return bool(where and where.strip()) and not find_systems(where or "", list(systems))
+
+
+def systems_exact(gold: GoldTicket, ticket: Ticket | None) -> bool:
+    """The ticket names exactly the gold's systems (both empty counts as right)."""
+    return set(gold.systems) == set(ticket.systems if ticket else [])
 
 
 def total(counts: Iterable[dict[str, Counts]]) -> dict[str, Counts]:
@@ -235,6 +324,13 @@ class SystemReport(BaseModel):
     field_f1: dict[str, Score | None] = {}
     dropped: int = 0
     tickets_with_dropped: int = 0
+    added: int = 0
+    when_filled: int = 0
+    systems_gold: int = 0
+    systems_exact: Score | None = None
+    where_outside: int | None = Field(
+        default=None, description="model tickets whose 'where' names no vocabulary system"
+    )
     seconds_median: float | None = None
     seconds_p90: float | None = None
 
@@ -254,13 +350,19 @@ def department_report(
 
 
 def model_report(
-    name: str, results: Sequence[Result], gold: Sequence[GoldTicket], rounds: int, seed: int
+    name: str,
+    results: Sequence[Result],
+    gold: Sequence[GoldTicket],
+    rounds: int,
+    seed: int,
+    systems: Sequence[System] = (),
 ) -> SystemReport:
     pairs = [(r.expected or "", r.best_fit) for r in results]
     tickets = [r for r in results if r.ticket]
     by_id = {str(r.id): r for r in results}
     checked = [g for g in gold if g.checked and str(g.id) in by_id]
-    per_request = [field_counts(g, by_id[str(g.id)].ticket) for g in checked]
+    per_request = [field_counts(g, by_id[str(g.id)].ticket, systems) for g in checked]
+    with_systems = [g for g in checked if g.systems_checked]
     seconds = sorted(r.seconds for r in results if r.seconds is not None)
     return department_report(
         name,
@@ -283,6 +385,22 @@ def model_report(
         else {},
         dropped=sum(len(r.dropped_identifiers) for r in results),
         tickets_with_dropped=sum(bool(r.dropped_identifiers) for r in results),
+        systems_gold=len(with_systems),
+        where_outside=sum(
+            outside_vocabulary(r.ticket.where if r.ticket else None, systems) for r in tickets
+        )
+        if systems
+        else None,
+        systems_exact=bootstrap(
+            [systems_exact(g, by_id[str(g.id)].ticket) for g in with_systems],
+            statistics.fmean,
+            rounds,
+            seed,
+        )
+        if with_systems
+        else None,
+        added=sum(len(r.added_identifiers) for r in results),
+        when_filled=sum(r.when_from_rule is not None for r in results),
         seconds_median=statistics.median(seconds) if seconds else None,
         seconds_p90=seconds[int(0.9 * (len(seconds) - 1))] if seconds else None,
     )
@@ -321,8 +439,9 @@ def render(set_name: str, reports: Sequence[SystemReport]) -> str:
             "",
             f"## {set_name}: fields (gold subset): F1 (range), P / R",
             "",
-            "| System | Gold | " + " | ".join(FIELDS) + " | Dropped identifiers |",
-            "|---|---|" + "---|" * (len(FIELDS) + 1),
+            "| System | Gold | " + " | ".join(FIELDS) + " | Systems exact (gold) "
+            "| 'where' outside the vocabulary | Identifiers dropped · added | 'when' from a rule |",
+            "|---|---|" + "---|" * (len(FIELDS) + 4),
         ]
         for r in models:
             cells = [
@@ -330,6 +449,11 @@ def render(set_name: str, reports: Sequence[SystemReport]) -> str:
                 f"{cell(r.fields[f].recall)}"
                 for f in FIELDS
             ]
-            dropped = f"{r.dropped} in {r.tickets_with_dropped} of {r.requests} tickets"
-            lines.append(f"| {r.name} | {r.gold} | " + " | ".join(cells) + f" | {dropped} |")
+            changed = f"{r.dropped} in {r.tickets_with_dropped} of {r.requests} tickets · {r.added}"
+            exact = f"{cell(r.systems_exact)} ({r.systems_gold})" if r.systems_gold else "—"
+            lines.append(
+                f"| {r.name} | {r.gold} | "
+                + " | ".join(cells)
+                + f" | {exact} | {cell(r.where_outside)} | {changed} | {r.when_filled} |"
+            )
     return "\n".join(lines) + "\n"

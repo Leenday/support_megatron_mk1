@@ -1,0 +1,42 @@
+{% extends "support/base.html" %}{% load i18n %}
+{% block title %}{% blocktranslate with number=saved.pk %}Request #{{ number }}{% endblocktranslate %}{% endblock %}
+{% block content %}
+<div class="card">
+  {% if new %}
+    {% if tickets %}
+      {% for ticket, department in tickets %}
+        <p class="notice ok">{% blocktranslate with number=ticket.pk %}Ticket #{{ number }} accepted, sent to “{{ department }}”.{% endblocktranslate %}</p>
+      {% endfor %}
+    {% else %}
+      <p class="notice warn">{% blocktranslate with number=saved.pk %}Request #{{ number }} accepted. A specialist will route it manually.{% endblocktranslate %}</p>
+    {% endif %}
+    <p>{% translate "Keep this link to check the status:" %}<br><a class="link" href="{{ link }}">{{ link }}</a></p>
+  {% endif %}
+
+  <h1>{% blocktranslate with number=saved.pk %}Request #{{ number }}{% endblocktranslate %}</h1>
+  <p class="help">{% translate "Sent" %} {{ saved.created_at|date:"DATETIME_FORMAT" }}</p>
+
+  {% if tickets %}
+    <table>
+      <thead>
+        <tr><th>{% translate "Ticket" %}</th><th>{% translate "Department" %}</th><th>{% translate "Status" %}</th><th>{% translate "Taken" %}</th><th>{% translate "Closed" %}</th></tr>
+      </thead>
+      <tbody>
+        {% for ticket, department in tickets %}
+          <tr>
+            <td>#{{ ticket.pk }}<br><span class="help">{{ ticket.summary }}</span></td>
+            <td>{{ department }}</td>
+            <td>{{ ticket.get_status_display }}</td>
+            <td>{{ ticket.taken_at|date:"SHORT_DATETIME_FORMAT"|default:"—" }}</td>
+            <td>{{ ticket.closed_at|date:"SHORT_DATETIME_FORMAT"|default:"—" }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <p>{% translate "The request is waiting for a specialist to route it." %}</p>
+  {% endif %}
+
+  <p><a href="{% url 'request_form' %}">{% translate "Send another request" %}</a></p>
+</div>
+{% endblock %}

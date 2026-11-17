@@ -9,7 +9,6 @@ from megatron.testset import (
     GoldTicket,
     clean_text,
     draft_gold,
-    find_identifiers,
     label_counts,
     label_to_id,
     load_gold,
@@ -114,20 +113,6 @@ def test_split_keeps_proportions_and_a_test_request_per_label():
 def test_pick_gold_takes_labels_in_turn():
     gold = pick_gold(requests_with(a=20, b=2, c=1), size=7, seed=1)
     assert label_counts(gold) == {"a": 4, "b": 2, "c": 1}
-
-
-def test_find_identifiers():
-    text = "User jsmith, order ORD-1042 and 104233, phone +7 999 123-45-67, mail a.b@example.com"
-    assert find_identifiers(text) == [
-        "ORD-1042",
-        "104233",
-        "+7 999 123-45-67",
-        "a.b@example.com",
-    ]
-
-
-def test_find_identifiers_keeps_placeholders():
-    assert find_identifiers("call [phone] about <acc_num>") == ["[phone]", "<acc_num>"]
 
 
 def test_draft_gold_does_not_take_dates_for_identifiers():
