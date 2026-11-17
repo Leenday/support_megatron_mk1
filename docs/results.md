@@ -86,6 +86,10 @@ Measured on 2026-11-12. The department config got a vocabulary of systems with t
 
 On 2026-11-11 the evaluation was rerun on configs exported from the service database (`export_departments`): RU department accuracy 0.93 (0.87–0.99), the same as with the YAML; EN 0.27 (0.18–0.35) against 0.28; the fields move within their ranges. Details: [testing-iteration2.md](testing-iteration2.md).
 
+## Triage time (#43)
+
+On 2026-11-17 one participant triaged 30 RU test requests outside the gold subset: 15 by hand (department, who / where / when / what) and 15 by checking the service's ticket, in alternating blocks of 5, timed on a local page (`megatron-triage`). Median 31.2 s by hand against 9.7 s with the service (8.3 s check + 1.5 s model): **69 % shorter (95 % range 44–79 %)**, goal 30 %. Department right: 73 % by hand, 93 % with the service (ranges overlap). The participant kept every service department, including the one wrong, so checks need the Validator (#57). Method, checks and limits: [triage-time.md](triage-time.md).
+
 ## Choice of model
 
 **gpt-5.4-mini with prompt v3** is the model for iteration 2.
@@ -105,5 +109,5 @@ On 2026-11-11 the evaluation was rerun on configs exported from the service data
 | "who", "what" F1 (story 8) | ≥ 0.90 | 0.95, 0.97 | met |
 | "when", identifiers F1 | ≥ 0.85 | 0.87, 0.92 (with the shape filter, #35) | met |
 | "where" F1 | ≥ 0.75 | by words 0.64; with the vocabulary 0.81 (0.67–0.93); `systems` F1 0.91 (#34) | met with the vocabulary (lower range end 0.67); by words open |
-| Triage time, request → ticket in work (business goal) | −30 % | — | measured in #43 |
+| Triage time, request → ticket in work (business goal) | −30 % | triage −69 % (44–79 %): 31 s by hand → 10 s with the service, median (#43) | met for triage, one participant; queue time not measured |
 | Local model as an alternative (story 30) | ≥ 0.85 accuracy, ≤ 10 s | 0.29, ~3 min (qwen3:1.7b, CPU) | open: #44 |
