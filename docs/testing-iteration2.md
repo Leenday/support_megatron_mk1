@@ -1,17 +1,17 @@
 # Iteration 2 testing (#19)
 
-Checked on 2026-11-11 on the `develop` branch after #15, #17, #42, #18 and #35, before the admin panel (#16, PR #52). The check is rerun after #52 is merged and before the v0.2.0 release.
+Checked on 2026-11-11 on the `develop` branch after #15, #17, #42, #18 and #35, and rerun on 2026-11-17 after #34 (systems vocabulary) with the same result, before the v0.2.0 release. The extended admin panel (#16, PR #52) moved to iteration 3: v0.2.0 is released without it, and stories 27–29 are checked again when it is merged.
 
 How:
 
 - **User stories:** [e2e/acceptance.py](../e2e/acceptance.py) in Chrome against the service in Docker with Postgres (`LLM_BACKEND=fake`, so the routed departments are predictable). It acts as a requester, two specialists and the admin, and the admin creates the specialists in the admin panel. Rerun: README "Acceptance check".
 - **Time to ticket with the real model:** 5 synthetic requests through the form with gpt-5.4-mini.
 - **Regression:** each test set's department config imported into the database, exported again (`export_departments`), and the evaluation rerun with gpt-5.4-mini v3 on the exported config.
-- **Unit tests:** 211 (`uv run pytest`), no network.
+- **Unit tests:** 231 (`uv run pytest`, 2026-11-17), no network.
 
 ## User stories
 
-✅ works · 🟡 works with a limit (see the note) · ⏳ waits for the admin panel (#16)
+✅ works · 🟡 works with a limit (see the note) · ⏳ waits for the admin panel (#16, iteration 3)
 
 | Story | | Result | Note |
 |---|---|---|---|
@@ -62,5 +62,4 @@ No regression: every difference is inside the 95 % ranges, the variation of the 
 
 ## Open
 
-- Stories 27–29 → #16 (PR #52); rerun the check after it is merged.
-- Release v0.2.0 after #16.
+- Stories 27–29 → #16 (PR #52, iteration 3); rerun the check after it is merged.
