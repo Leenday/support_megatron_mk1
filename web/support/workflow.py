@@ -11,7 +11,7 @@ from django.db import transaction
 from django.utils import timezone
 from django.utils.translation import gettext as _
 
-from support.models import Department, Ticket, TicketEvent, User
+from support.models import Department, System, Ticket, TicketEvent, User
 
 EDITABLE = ("who", "where", "when", "what", "summary", "tags")
 
@@ -59,6 +59,9 @@ def edit(ticket_id: int, user: User, values: dict) -> Ticket:
         TicketEvent.objects.create(
             ticket=ticket, kind=TicketEvent.Kind.EDITED, actor=user, data=changes
         )
+        from support import vocabulary  # imports this module
+
+        vocabulary.propose_edit(ticket, user, changes)  # a validator confirms or reverts it
     return ticket
 
 
@@ -114,14 +117,30 @@ def return_ticket(ticket_id: int, user: User, reason: str) -> Ticket:
 
 
 @transaction.atomic
-def close(ticket_id: int, user: User, correct_department: str | None = None) -> Ticket:
+def close(
+    ticket_id: int,
+    user: User,
+    correct_department: str | None = None,
+    systems: list[str] | None = None,
+    proposal: tuple[str, str | None] | None = None,
+) -> Ticket:
     """Mark the ticket done, with the specialist's answer to "Was the department right?".
 
     `correct_department` None means "yes"; otherwise it is the department that should have
     got the ticket. The answer is quality monitoring, not training data (#18, #16).
+
+    `systems` are the ticket's systems as the specialist confirmed them (None = as the model
+    gave them), and `proposal` a vocabulary proposal (text, system id or None for a new
+    system) that goes to a validator (#57).
     """
     ticket = locked(ticket_id)
     require_own(ticket, user)
+    before = list(ticket.systems)
+    if systems is not None:
+        known = set(System.objects.filter(pk__in=systems).values_list("pk", flat=True))
+        if set(systems) - known:
+            raise ActionRefused(_("Unknown system."))
+        ticket.systems = [s for s in systems if s in known]
     if correct_department == ticket.department_id:
         correct_department = None
     if (
@@ -131,7 +150,16 @@ def close(ticket_id: int, user: User, correct_department: str | None = None) -> 
         raise ActionRefused(_("Unknown department."))
     ticket.status = Ticket.Status.DONE
     ticket.closed_at = timezone.now()
-    ticket.save(update_fields=["status", "closed_at"])
+    ticket.save(update_fields=["status", "closed_at", "systems"])
+    proposed = " ".join(proposal[0].split()) if proposal else ""
+    if proposal is not None and proposed:
+        from support import vocabulary  # imports this module
+
+        text, system_id = proposal
+        target = System.objects.filter(pk=system_id).first() if system_id else None
+        if system_id and target is None:
+            raise ActionRefused(_("Unknown system."))
+        vocabulary.propose_system(ticket, user, text, target)
     TicketEvent.objects.create(
         ticket=ticket,
         kind=TicketEvent.Kind.STATUS_CHANGED,
@@ -142,6 +170,10 @@ def close(ticket_id: int, user: User, correct_department: str | None = None) -> 
             "department": ticket.department_id,
             "department_correct": correct_department is None,
             "correct_department": correct_department,
+            "systems": [before, list(ticket.systems)],
+            # Confirmed = kept as the model gave them, with nothing missing from the vocabulary.
+            "systems_confirmed": set(before) == set(ticket.systems) and not proposed,
+            "proposal": proposed,
         },
     )
     return ticket

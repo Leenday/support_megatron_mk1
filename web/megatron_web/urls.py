@@ -20,6 +20,8 @@ urlpatterns = [
     path("desk/", desk.queue, name="desk"),  # the specialist's dashboard (#18)
     path("desk/tickets/<int:pk>/", desk.ticket_page, name="desk_ticket"),
     path("desk/tickets/<int:pk>/<str:action>/", desk.act, name="desk_action"),
+    path("desk/review/", desk.review, name="desk_review"),  # the validator's page (#57)
+    path("desk/review/<int:pk>/<str:action>/", desk.review_action, name="desk_review_action"),
     path("i18n/", include("django.conf.urls.i18n")),  # set_language: the RU / EN switch
     path("api/", api.urls),  # Swagger UI at /api/docs, schema at /api/openapi.json (#42)
     path("admin/", site.urls),

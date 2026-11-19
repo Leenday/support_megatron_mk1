@@ -146,7 +146,7 @@ class DepartmentAdminForm(forms.ModelForm):
 class RoutingAdminForm(forms.ModelForm):
     class Meta:
         model = RoutingSettings
-        fields = ("w_match", "w_load", "rank_match", "languages")
+        fields = ("w_match", "w_load", "rank_match", "languages", "spelling_auto_approve")
 
     def clean(self):
         super().clean()
@@ -305,6 +305,35 @@ class CloseForm(forms.Form):
         queryset=Department.objects.filter(active=True),
         required=False,
     )
+    # The ticket's systems, prefilled with the model's answer: a right ticket costs no click.
+    systems = forms.MultipleChoiceField(
+        label=_("Systems"),
+        required=False,
+        widget=forms.CheckboxSelectMultiple,
+        help_text=_("Untick a wrong one, tick a missing one."),
+    )
+    proposal = forms.ChoiceField(
+        label=_("Does “Where” name a system missing from the list?"),
+        choices=[
+            ("none", _("No, not a system")),
+            ("new", _("Yes, a new system")),
+            ("spelling", _("Yes, another spelling of:")),
+        ],
+        widget=forms.RadioSelect,
+        initial="none",
+        required=False,  # not sent = "no"
+    )
+    # Unticking every box sends no `systems` at all; this tells it from a client that never
+    # showed them, whose ticket keeps the model's systems.
+    systems_shown = forms.BooleanField(required=False, initial=True, widget=forms.HiddenInput)
+    proposal_system = forms.ChoiceField(label=_("System"), required=False)
+    proposal_text = forms.CharField(
+        label=_("As the request writes it"),
+        required=False,
+        max_length=200,
+        widget=forms.TextInput(),
+        help_text=_("A validator approves it before it reaches the vocabulary."),
+    )
 
     def __init__(self, *args, language: str = "ru", exclude: str | None = None, **kwargs):
         super().__init__(*args, **kwargs)
@@ -312,10 +341,58 @@ class CloseForm(forms.Form):
         assert isinstance(field, DepartmentField)
         field.queryset = Department.objects.filter(active=True).exclude(pk=exclude)
         field.language = language
+        active = list(System.objects.filter(active=True).values_list("id", "name"))
+        known = {i for i, _ in active}
+        inactive = [x for x in self.initial.get("systems", []) if x not in known]
+        names = dict(System.objects.filter(pk__in=inactive).values_list("id", "name"))
+        # A system deactivated since the ticket was made still shows, to be kept or removed.
+        cast(forms.MultipleChoiceField, self.fields["systems"]).choices = [
+            *active,
+            *((x, names.get(x, x)) for x in inactive),
+        ]
+        cast(forms.ChoiceField, self.fields["proposal_system"]).choices = [
+            ("", _("Choose a system")),
+            *active,
+        ]
 
     def clean(self):
         super().clean()
         data = self.cleaned_data
         if data.get("correct") == "no" and not data.get("department"):
             self.add_error("department", _("Choose the department that should have got it."))
+        kind = data.get("proposal") or "none"
+        if kind != "none" and not (data.get("proposal_text") or "").strip():
+            self.add_error("proposal_text", _("Write the system as the request names it."))
+        if kind == "spelling" and not data.get("proposal_system"):
+            self.add_error("proposal_system", _("Choose the system it is a spelling of."))
         return data
+
+    def confirmed_systems(self) -> list[str] | None:
+        """The systems as the specialist left them, or None when the form did not show them."""
+        return self.cleaned_data["systems"] if self.cleaned_data.get("systems_shown") else None
+
+    def vocabulary_proposal(self) -> tuple[str, str | None] | None:
+        """(text, system id or None for a new system), or None when nothing is proposed."""
+        data = self.cleaned_data
+        match data.get("proposal"):
+            case "new":
+                return data["proposal_text"], None
+            case "spelling":
+                return data["proposal_text"], data["proposal_system"]
+        return None
+
+
+class ApproveForm(forms.Form):
+    system_id = forms.CharField(label=_("System ID"), required=False, max_length=50)
+    name = forms.CharField(label=_("Name"), required=False, max_length=200)
+
+
+class RejectForm(forms.Form):
+    reason = forms.CharField(label=_("Reason"), max_length=500)
+
+
+class EditReviewForm(forms.Form):
+    decision = forms.ChoiceField(
+        choices=[("confirm", _("Confirm")), ("revert", _("Revert"))], widget=forms.HiddenInput
+    )
+    comment = forms.CharField(label=_("Comment"), required=False, max_length=500)
