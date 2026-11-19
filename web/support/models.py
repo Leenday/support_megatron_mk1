@@ -26,14 +26,10 @@ if TYPE_CHECKING:
     # Reverse relations, declared for the type checker (Django adds them at runtime).
     from django.db.models.fields.related_descriptors import RelatedManager
 
-# Requester accounts are optional. The public form still works without signing in.
-REQUESTER_ROLE = "Requester"
 SPECIALIST_ROLE = "Specialist"
 ADMIN_ROLE = "Admin"
 ROLES = (SPECIALIST_ROLE, ADMIN_ROLE)
-ACCOUNT_ROLES = (REQUESTER_ROLE, *ROLES)
 ROLE_LABELS = {
-    REQUESTER_ROLE: _("Requester"),
     SPECIALIST_ROLE: _("Specialist"),
     ADMIN_ROLE: _("Administrator"),
 }
@@ -54,7 +50,7 @@ def new_access_code() -> str:
 
 
 class User(AbstractUser):
-    """An optional requester account or a member of staff."""
+    """An account for a staff member or an integration."""
 
     class Meta(AbstractUser.Meta):  # ty: ignore[invalid-attribute-override]
         constraints = [

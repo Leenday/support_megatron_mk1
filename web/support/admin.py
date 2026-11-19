@@ -13,16 +13,16 @@ from django.utils.translation import gettext_lazy as _
 
 from support import services, workflow
 from support.forms import (
+    AdminLoginForm,
     DepartmentAdminForm,
-    EmailLoginForm,
     RoutingAdminForm,
     StaffChangeForm,
     StaffCreationForm,
     TicketAdminForm,
 )
 from support.models import (
-    ACCOUNT_ROLES,
     ROLE_LABELS,
+    ROLES,
     ApiToken,
     Department,
     Request,
@@ -43,7 +43,7 @@ class SupportAdminSite(admin.AdminSite):
     site_title = "Megatron"
     index_title = _("Dashboard")
     site_url = None
-    login_form = EmailLoginForm
+    login_form = AdminLoginForm
     index_template = "support/admin_index.html"
 
     def has_permission(self, request):
@@ -64,9 +64,7 @@ class StaffAdmin(UserAdmin):
     @admin.display(description=_("Role"))
     def role(self, obj):
         return ", ".join(
-            str(ROLE_LABELS[group.name])
-            for group in obj.groups.all()
-            if group.name in ACCOUNT_ROLES
+            str(ROLE_LABELS[group.name]) for group in obj.groups.all() if group.name in ROLES
         )
 
     def get_queryset(self, request):
@@ -97,7 +95,7 @@ class StaffAdmin(UserAdmin):
     def save_model(self, request, obj, form, change):
         super().save_model(request, obj, form, change)
         if "role" in form.cleaned_data:
-            obj.groups.remove(*obj.groups.filter(name__in=ACCOUNT_ROLES))
+            obj.groups.remove(*obj.groups.filter(name__in=ROLES))
             obj.groups.add(form.cleaned_data["role"])
 
 

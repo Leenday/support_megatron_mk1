@@ -10,7 +10,7 @@ import support.models
 
 class Migration(migrations.Migration):
     dependencies = [
-        ("support", "0008_requester_role"),
+        ("support", "0007_merge_admin_panel_and_systems"),
     ]
 
     operations = [

@@ -3,16 +3,21 @@ from typing import cast
 from uuid import uuid4
 
 from django import forms
-from django.contrib.auth import authenticate
-from django.contrib.auth.forms import AuthenticationForm, UserChangeForm, UserCreationForm
+from django.contrib.auth.forms import (
+    AuthenticationForm,
+    UserChangeForm,
+    UserCreationForm,
+    UsernameField,
+)
 from django.contrib.auth.models import Group
+from django.utils.text import format_lazy
 from django.utils.translation import gettext_lazy as _
 from pydantic import ValidationError
 
 from megatron.departments import RoutingWeights
 from support.models import (
-    ACCOUNT_ROLES,
     ROLE_LABELS,
+    ROLES,
     SPECIALIST_ROLE,
     Department,
     RoutingSettings,
@@ -23,6 +28,18 @@ from support.models import (
 
 
 class DeskLoginForm(AuthenticationForm):
+    username = UsernameField(
+        label=format_lazy("Email / {}", _("Username")),
+        widget=forms.TextInput(attrs={"autofocus": True, "autocomplete": "username"}),
+    )
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Email addresses can be longer than usernames.
+        identifier = cast(UsernameField, self.fields["username"])
+        identifier.max_length = 254
+        identifier.widget.attrs["maxlength"] = 254
+
     def clean(self):
         identifier = self.cleaned_data.get("username", "")
         if "@" in identifier:
@@ -32,34 +49,7 @@ class DeskLoginForm(AuthenticationForm):
         return super().clean()
 
 
-class EmailLoginForm(AuthenticationForm):
-    username = forms.EmailField(
-        label="Email",
-        max_length=254,
-        widget=forms.EmailInput(attrs={"autofocus": True, "autocomplete": "username"}),
-    )
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.username_field = User._meta.get_field("email")
-        email_field = cast(forms.EmailField, self.fields["username"])
-        email_field.max_length = 254
-        email_field.widget.attrs["maxlength"] = 254
-
-    def clean(self):
-        email = self.cleaned_data.get("username")
-        password = self.cleaned_data.get("password")
-        if email and password:
-            user = User.objects.filter(email__iexact=email).first()
-            if user is None:
-                User().set_password(password)
-                raise self.get_invalid_login_error()
-            self.user_cache = authenticate(self.request, username=user.username, password=password)
-            if self.user_cache is None:
-                raise self.get_invalid_login_error()
-            self.confirm_login_allowed(self.user_cache)
-        return self.cleaned_data
-
+class AdminLoginForm(DeskLoginForm):
     def confirm_login_allowed(self, user):
         super().confirm_login_allowed(user)
         if not user.can_access_admin():
@@ -73,7 +63,7 @@ class RoleField(forms.ModelChoiceField):
 
 class AccountRoleForm(forms.ModelForm):
     role = RoleField(
-        queryset=Group.objects.filter(name__in=ACCOUNT_ROLES).order_by("name"), label=_("Role")
+        queryset=Group.objects.filter(name__in=ROLES).order_by("name"), label=_("Role")
     )
 
     def clean(self):
@@ -112,7 +102,7 @@ class StaffChangeForm(AccountRoleForm, UserChangeForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         if self.instance.pk and "role" in self.fields:
-            self.initial["role"] = self.instance.groups.filter(name__in=ACCOUNT_ROLES).first()
+            self.initial["role"] = self.instance.groups.filter(name__in=ROLES).first()
 
 
 class DepartmentAdminForm(forms.ModelForm):

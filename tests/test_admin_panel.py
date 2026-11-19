@@ -1,11 +1,11 @@
 import pytest
 import yaml
 from django.contrib.auth.models import Group
-from django.test import override_settings
 from django.urls import reverse
 
 from support.models import (
-    REQUESTER_ROLE,
+    ADMIN_ROLE,
+    ROLES,
     SPECIALIST_ROLE,
     Department,
     Request,
@@ -21,24 +21,31 @@ pytestmark = pytest.mark.django_db
 PASSWORD = "Test6Test7"
 
 
-def admin_sign_in(client, email):
+@pytest.fixture
+def staff_admin():
+    user = User.objects.create_user(username="admin", email="admin@example.org", password=PASSWORD)
+    user.groups.add(Group.objects.get(name=ADMIN_ROLE))
+    return user
+
+
+def admin_sign_in(client, identifier):
     url = reverse("admin:login")
     return client.post(
         url,
-        {"username": email, "password": PASSWORD, "next": client.get(url).context["next"]},
+        {"username": identifier, "password": PASSWORD, "next": client.get(url).context["next"]},
     )
 
 
-@override_settings(PASSWORD_HASHERS=["django.contrib.auth.hashers.PBKDF2PasswordHasher"])
-def test_seeded_admin_can_log_in_with_email(client):
-    response = admin_sign_in(client, "TEST@test.test")
+def test_admin_can_log_in_with_email(client, staff_admin):
+    email = staff_admin.email.upper()
+    response = admin_sign_in(client, email)
 
     assert response.url == reverse("admin:index")
     assert reverse("admin:support_user_changelist") in client.get(response.url).content.decode()
     assert client.get(reverse("admin:support_user_changelist")).status_code == 200
 
     client.logout()
-    response = client.post(reverse("login"), {"username": "TEST@test.test", "password": PASSWORD})
+    response = client.post(reverse("login"), {"username": email, "password": PASSWORD})
     assert response.url == reverse("desk")
 
 
@@ -75,10 +82,26 @@ def test_superuser_with_email_can_sign_in_without_a_role(client):
     assert client.get(reverse("admin:support_department_changelist")).status_code == 200
 
 
-def test_admin_can_create_and_edit_users(client):
-    client.force_login(User.objects.get(email="test@test.test"))
+def test_superuser_without_email_can_sign_in_with_username(client):
+    user = User.objects.create_superuser(username="root", password=PASSWORD)
+    login_page = client.get(reverse("admin:login"), headers={"accept-language": "en"})
+    username_field = login_page.context["form"]["username"]
+    assert username_field.label == "Email / Username"
+    assert username_field.field.widget.input_type == "text"
+
+    response = admin_sign_in(client, user.username)
+
+    assert user.email == ""
+    assert response.url == reverse("admin:index")
+    assert client.get(response.url).status_code == 200
+
+
+def test_admin_can_create_and_edit_users(client, staff_admin):
+    client.force_login(staff_admin)
     specialist = Group.objects.get(name=SPECIALIST_ROLE)
     add = reverse("admin:support_user_add")
+    role_field = client.get(add).context["adminform"].form.fields["role"]
+    assert set(role_field.queryset.values_list("name", flat=True)) == set(ROLES)
     email = "new@example.org"
     department = Department.objects.create(id="network", name_en="Network", language="en")
     fields = {"email": email, "role": specialist.pk, "password1": PASSWORD, "password2": PASSWORD}
@@ -94,21 +117,21 @@ def test_admin_can_create_and_edit_users(client):
     assert User.objects.filter(email__iexact=email).count() == 1
 
     change = reverse("admin:support_user_change", args=[user.pk])
-    requester = Group.objects.get(name=REQUESTER_ROLE)
-    fields = {"email": email, "role": requester.pk, "is_active": "on"}
+    admin_role = Group.objects.get(name=ADMIN_ROLE)
+    fields = {"email": email, "role": admin_role.pk, "is_active": "on"}
     assert client.post(change, fields).status_code == 302
     user.refresh_from_db()
     assert user.is_active
     assert user.department_id is None
-    assert list(user.groups.values_list("name", flat=True)) == [REQUESTER_ROLE]
+    assert list(user.groups.values_list("name", flat=True)) == [ADMIN_ROLE]
     assert client.post(change, fields | {"is_active": ""}).status_code == 302
     user.refresh_from_db()
     assert not user.is_active
 
 
-def test_admin_manages_departments_routing_and_export(client, departments_path):
+def test_admin_manages_departments_routing_and_export(client, departments_path, staff_admin):
     import_departments_file(departments_path)
-    client.force_login(User.objects.get(email="test@test.test"))
+    client.force_login(staff_admin)
     department = {
         "id": "billing",
         "name_ru": "Оплата",
@@ -141,10 +164,11 @@ def test_admin_manages_departments_routing_and_export(client, departments_path):
     assert any(row["id"] == "billing" and row["fallback"] for row in exported["departments"])
 
 
-def test_admin_reassigns_with_audit_and_sees_requests_and_accuracy(client, departments_path):
+def test_admin_reassigns_with_audit_and_sees_requests_and_accuracy(
+    client, departments_path, staff_admin
+):
     import_departments_file(departments_path)
-    admin = User.objects.get(email="test@test.test")
-    client.force_login(admin)
+    client.force_login(staff_admin)
     specialist = User.objects.create_user(username="operator", department_id="software")
     request = Request.objects.create(text="Example", model="model-v1")
     failed = Request.objects.create(text="Other request", error="Backend unavailable")
@@ -180,7 +204,7 @@ def test_admin_reassigns_with_audit_and_sees_requests_and_accuracy(client, depar
     assert (audit.data["from"], audit.data["to"], audit.actor_id) == (
         "software",
         "network",
-        admin.pk,
+        staff_admin.pk,
     )
     assert ticket.events.get(kind=TicketEvent.Kind.EDITED).data["summary"] == ["Test", "Updated"]
     assert "Reassigned" in client.get(url, headers={"accept-language": "en"}).content.decode()
