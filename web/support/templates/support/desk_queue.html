@@ -38,7 +38,7 @@
             <td>{{ ticket.get_status_display }}</td>
             <td title="{{ ticket.created_at|date:'SHORT_DATETIME_FORMAT' }}">{{ ticket.created_at|timesince }}</td>
             <td>{{ ticket.assignee.get_username|default:"—" }}</td>
-            <td>{% if ticket.status == "new" %}<form method="post" action="{% url 'desk_action' ticket.pk 'take' %}">{% csrf_token %}<button>{% translate "Take" %}</button></form>{% endif %}</td>
+            <td>{% if works and ticket.status == "new" %}<form method="post" action="{% url 'desk_action' ticket.pk 'take' %}">{% csrf_token %}<button>{% translate "Take" %}</button></form>{% endif %}</td>
           </tr>
         {% endfor %}
       </tbody>

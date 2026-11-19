@@ -153,7 +153,13 @@ def test_admin_manages_departments_routing_and_export(client, departments_path, 
 
     settings = client.get(reverse("admin:support_routingsettings_changelist"))
     assert settings.url == reverse("admin:support_routingsettings_change", args=[1])
-    weights = {"w_match": 0.5, "w_load": 0.5, "rank_match": "[1, 0.4]", "languages": '["ru","en"]'}
+    weights = {
+        "w_match": 0.5,
+        "w_load": 0.5,
+        "rank_match": "[1, 0.4]",
+        "languages": '["ru","en"]',
+        "spelling_auto_approve": 0,
+    }
     assert client.post(settings.url, weights | {"rank_match": "[0.4, 1]"}).status_code == 200
     assert client.post(settings.url, weights | {"w_load": -1}).status_code == 200
     assert client.post(settings.url, weights).status_code == 302

@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-11-12 22:44+0300\n"
+"POT-Creation-Date: 2026-11-19 11:43+0300\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: Russian\n"
@@ -80,9 +80,20 @@ msgstr "Изменены поля: %(fields)s"
 msgid "Returned from “%(from)s” to “%(to)s”: %(reason)s"
 msgstr "Возвращена из отдела «%(from)s» в отдел «%(to)s»: %(reason)s"
 
+msgid "Assignee changed"
+msgstr "Исполнитель изменён"
+
 #, python-format
 msgid "Reassigned from “%(from)s” to “%(to)s”"
 msgstr "Переназначена из отдела «%(from)s» в отдел «%(to)s»"
+
+#, python-format
+msgid "Validator confirmed the edit of %(fields)s"
+msgstr "Валидатор подтвердил правку: %(fields)s"
+
+#, python-format
+msgid "Validator reverted the edit of %(fields)s"
+msgstr "Валидатор откатил правку: %(fields)s"
 
 msgid "Done; the department was right"
 msgstr "Выполнена; отдел верный"
@@ -104,14 +115,37 @@ msgstr "Возвращена в отдел «%(department)s»."
 msgid "The ticket is done."
 msgstr "Заявка выполнена."
 
+#, python-format
+msgid "Approved: the next request gets “%(system)s” in the vocabulary."
+msgstr "Утверждено: следующее обращение получит «%(system)s» в словаре."
+
+msgid "Say why the proposal is rejected."
+msgstr "Укажите, почему предложение отклонено."
+
+msgid "Rejected; it will not be asked again."
+msgstr "Отклонено; больше спрашивать не будем."
+
+msgid "Edit confirmed."
+msgstr "Правка подтверждена."
+
+msgid "Edit reverted."
+msgstr "Правка откачена."
+
+msgid "Username"
+msgstr "Имя пользователя"
+
 msgid "Choose an active department for the specialist."
 msgstr "Выберите действующий отдел для специалиста."
 
 msgid "Fallback"
 msgstr "Резервный отдел"
 
-msgid "Send requests here when no other department fits. Selecting this replaces the current fallback."
-msgstr "Сюда поступают обращения, для которых не подошёл другой отдел. Выбор заменяет текущий резервный отдел."
+msgid ""
+"Send requests here when no other department fits. Selecting this replaces "
+"the current fallback."
+msgstr ""
+"Сюда поступают обращения, для которых не подошёл другой отдел. Выбор "
+"заменяет текущий резервный отдел."
 
 msgid "Enter a non-empty JSON list of tags."
 msgstr "Введите непустой список тегов в формате JSON."
@@ -125,6 +159,9 @@ msgstr "Резервный отдел должен быть активен."
 msgid "Select a different fallback department first."
 msgstr "Сначала назначьте другой резервный отдел."
 
+msgid "Enter a finite, non-negative weight."
+msgstr "Введите конечное неотрицательное число."
+
 msgid "Enter strictly decreasing numbers between 0 and 1, excluding 0."
 msgstr "Введите строго убывающие числа больше 0 и не больше 1."
 
@@ -134,11 +171,18 @@ msgstr "Введите список кодов языков в формате JS
 msgid "Keep all languages used by active departments."
 msgstr "Сохраните все языки, используемые активными отделами."
 
+msgid "Choose an active department."
+msgstr "Выберите действующий отдел."
+
+msgid "Choose an active specialist from this department."
+msgstr "Выберите активного специалиста из этого отдела."
+
 msgid "Describe the problem in your own words"
 msgstr "Опишите проблему своими словами"
 
 msgid "Russian or English. Who, where, when and what happened, if you know."
-msgstr "На русском или английском. Кто, где, когда и что случилось, если знаете."
+msgstr ""
+"На русском или английском. Кто, где, когда и что случилось, если знаете."
 
 msgid "How to reach you"
 msgstr "Как с вами связаться"
@@ -200,17 +244,68 @@ msgstr "Отдел"
 msgid "Choose a department"
 msgstr "Выберите отдел"
 
+msgid "Systems"
+msgstr "Системы"
+
+msgid "Untick a wrong one, tick a missing one."
+msgstr "Снимите лишнюю, отметьте пропущенную."
+
+msgid "Does “Where” name a system missing from the list?"
+msgstr "В поле «Где» система, которой нет в списке?"
+
+msgid "No, not a system"
+msgstr "Нет, это не система"
+
+msgid "Yes, a new system"
+msgstr "Да, новая система"
+
+msgid "Yes, another spelling of:"
+msgstr "Да, другое написание системы:"
+
+msgid "As the request writes it"
+msgstr "Как написано в обращении"
+
+msgid "A validator approves it before it reaches the vocabulary."
+msgstr "Валидатор утвердит это, прежде чем оно попадёт в словарь."
+
+msgid "Choose a system"
+msgstr "Выберите систему"
+
 msgid "Choose the department that should have got it."
 msgstr "Выберите отдел, в который она должна была уйти."
 
-msgid "Requester"
-msgstr "Заявитель"
+msgid "Write the system as the request names it."
+msgstr "Напишите систему так, как её называет обращение."
+
+msgid "Choose the system it is a spelling of."
+msgstr "Выберите систему, к которой относится написание."
+
+msgid "System ID"
+msgstr "Идентификатор системы"
+
+msgid "Name"
+msgstr "Название"
+
+msgid "Reason"
+msgstr "Причина"
+
+msgid "Confirm"
+msgstr "Подтвердить"
+
+msgid "Revert"
+msgstr "Откатить"
+
+msgid "Comment"
+msgstr "Комментарий"
 
 msgid "Specialist"
 msgstr "Специалист"
 
 msgid "Administrator"
 msgstr "Администратор"
+
+msgid "Validator"
+msgstr "Валидатор"
 
 msgid "Specialists only: the department whose tickets they work on."
 msgstr "Отдел, с заявками которого работает специалист."
@@ -219,7 +314,9 @@ msgid "Department ID"
 msgstr "Идентификатор отдела"
 
 msgid "Stable id: the model returns it, and the YAML import matches by it."
-msgstr "Постоянный идентификатор. Его возвращает модель, и по нему импорт из YAML находит отдел."
+msgstr ""
+"Постоянный идентификатор. Его возвращает модель, и по нему импорт из YAML "
+"находит отдел."
 
 msgid "Name in Russian"
 msgstr "Название на русском"
@@ -230,8 +327,11 @@ msgstr "Название на английском"
 msgid "Description"
 msgstr "Описание"
 
-msgid "The model reads this to choose the department: describe what it handles."
-msgstr "Модель читает описание при выборе отдела. Укажите, какие обращения он обрабатывает."
+msgid ""
+"The model reads this to choose the department: describe what it handles."
+msgstr ""
+"Модель читает описание при выборе отдела. Укажите, какие обращения он "
+"обрабатывает."
 
 msgid "Keywords, shown to the model as well."
 msgstr "Ключевые слова, которые видит модель."
@@ -246,7 +346,9 @@ msgid "Capacity"
 msgstr "Ёмкость"
 
 msgid "Open tickets the department can handle at once; empty = load not used."
-msgstr "Сколько открытых заявок отдел может обработать одновременно. Пустое значение отключает учёт загрузки."
+msgstr ""
+"Сколько открытых заявок отдел может обработать одновременно. Пустое значение"
+" отключает учёт загрузки."
 
 msgid "Receives requests that fit no other department."
 msgstr "Получает обращения, для которых не подошёл другой отдел."
@@ -263,17 +365,15 @@ msgstr "отдел"
 msgid "departments"
 msgstr "отделы"
 
-msgid "System ID"
-msgstr "Идентификатор системы"
-
-msgid "Name"
-msgstr "Название"
-
 msgid "Spellings"
 msgstr "Варианты написания"
 
-msgid "How requests write it: names, abbreviations, transliterations. The model reads them."
-msgstr "Названия, сокращения и транслитерации из обращений. Модель учитывает эти варианты."
+msgid ""
+"How requests write it: names, abbreviations, transliterations. The model "
+"reads them."
+msgstr ""
+"Названия, сокращения и транслитерации из обращений. Модель учитывает эти "
+"варианты."
 
 msgid "Inactive systems are not offered."
 msgstr "Неактивные системы не предлагаются модели."
@@ -294,13 +394,27 @@ msgid "Rank scores"
 msgstr "Оценки по рангу"
 
 msgid "Profile match of the model's 1st, 2nd, ... candidate, decreasing."
-msgstr "Оценки соответствия первого, второго и следующих кандидатов модели по убыванию."
+msgstr ""
+"Оценки соответствия первого, второго и следующих кандидатов модели по "
+"убыванию."
 
 msgid "Ticket languages"
 msgstr "Языки заявок"
 
 msgid "ISO 639-1 codes; the first is the default."
 msgstr "Коды ISO 639-1. Первый язык используется по умолчанию."
+
+msgid "Approve a spelling automatically after"
+msgstr "Утверждать написание автоматически после"
+
+msgid ""
+"A new spelling of a known system is approved without a validator once this "
+"many different specialists proposed it; 0 = never. New systems always need a"
+" validator."
+msgstr ""
+"Новое написание известной системы утверждается без валидатора, когда его "
+"предложили столько разных специалистов; 0 = никогда. Новую систему всегда "
+"утверждает валидатор."
 
 msgid "routing settings"
 msgstr "настройки маршрутизации"
@@ -317,6 +431,9 @@ msgstr "Контакт"
 msgid "E-mail, phone or messenger of the requester."
 msgstr "Почта, телефон или мессенджер заявителя."
 
+msgid "Requester"
+msgstr "Заявитель"
+
 msgid "Created"
 msgstr "Создана"
 
@@ -325,6 +442,12 @@ msgstr "Модель"
 
 msgid "Prompt version"
 msgstr "Версия промпта"
+
+msgid "Vocabulary version"
+msgstr "Версия словаря"
+
+msgid "Hash of the active systems with their spellings when the request came."
+msgstr "Хеш активных систем с вариантами написания на момент обращения."
 
 msgid "Attempts"
 msgstr "Попытки"
@@ -358,9 +481,6 @@ msgstr "Выполнена"
 
 msgid "Request"
 msgstr "Обращение"
-
-msgid "Systems"
-msgstr "Системы"
 
 msgid "System ids, see System."
 msgstr "Идентификаторы из справочника систем."
@@ -401,6 +521,9 @@ msgstr "Возвращена"
 msgid "Reassigned"
 msgstr "Переназначена"
 
+msgid "Reviewed"
+msgstr "Проверена"
+
 msgid "Ticket"
 msgstr "Заявка"
 
@@ -425,6 +548,62 @@ msgstr "событие заявки"
 msgid "ticket events"
 msgstr "события заявок"
 
+msgid "New system"
+msgstr "Новая система"
+
+msgid "Spelling"
+msgstr "Написание"
+
+msgid "Field edit"
+msgstr "Правка поля"
+
+msgid "Pending"
+msgstr "Ожидает"
+
+msgid "Approved"
+msgstr "Утверждено"
+
+msgid "Rejected"
+msgstr "Отклонено"
+
+msgid "Kind"
+msgstr "Вид"
+
+msgid "Proposed by"
+msgstr "Предложил"
+
+msgid "Spelling: the system it belongs to; new system: the one created."
+msgstr ""
+"Для написания — система, к которой оно относится; для новой системы — "
+"созданная система."
+
+msgid "Text"
+msgstr "Текст"
+
+msgid "The system's name or the spelling."
+msgstr "Название системы или написание."
+
+msgid "Normalised text: similar proposals group by it."
+msgstr "Нормализованный текст: по нему группируются похожие предложения."
+
+msgid "Changes"
+msgstr "Изменения"
+
+msgid "Field edit: {field: [old, new]}."
+msgstr "Правка поля: {поле: [было, стало]}."
+
+msgid "Reviewed by"
+msgstr "Проверил"
+
+msgid "Empty with a decision = approved automatically."
+msgstr "Пусто при принятом решении = утверждено автоматически."
+
+msgid "proposal"
+msgstr "предложение"
+
+msgid "proposals"
+msgstr "предложения"
+
 msgid "User"
 msgstr "Пользователь"
 
@@ -446,14 +625,20 @@ msgstr "токен API"
 msgid "API tokens"
 msgstr "токены API"
 
+msgid "Review"
+msgstr "Проверка"
+
 msgid "Log out"
 msgstr "Выйти"
 
 msgid "Export departments to YAML"
 msgstr "Выгрузить отделы в YAML"
 
-msgid "You have no department yet, so the queue is empty. Ask an admin to set it."
-msgstr "У вас ещё нет отдела, поэтому очередь пуста. Попросите администратора его указать."
+msgid ""
+"You have no department yet, so the queue is empty. Ask an admin to set it."
+msgstr ""
+"У вас ещё нет отдела, поэтому очередь пуста. Попросите администратора его "
+"указать."
 
 msgid "Show"
 msgstr "Показать"
@@ -469,6 +654,104 @@ msgstr "Показаны только 200 самых старых: уточни�
 
 msgid "No tickets here."
 msgstr "Заявок нет."
+
+msgid ""
+"Proposals from closed tickets and specialists' edits. An approved change "
+"reaches the next request at once; nobody reviews their own."
+msgstr ""
+"Предложения из закрытых заявок и правки специалистов. Утверждённое изменение"
+" сразу действует для следующего обращения; своё предложение никто не "
+"проверяет."
+
+msgid "Vocabulary proposals"
+msgstr "Предложения в словарь"
+
+msgid "Proposal"
+msgstr "Предложение"
+
+msgid "Times"
+msgstr "Раз"
+
+msgid "Specialists"
+msgstr "Специалисты"
+
+msgid "Tickets"
+msgstr "Заявки"
+
+msgid "Decision"
+msgstr "Решение"
+
+#, python-format
+msgid "“%(text)s” as a spelling of %(system)s"
+msgstr "«%(text)s» как написание «%(system)s»"
+
+#, python-format
+msgid "New system “%(text)s”"
+msgstr "Новая система «%(text)s»"
+
+msgid "Approve"
+msgstr "Утвердить"
+
+msgid "Reject"
+msgstr "Отклонить"
+
+msgid "Nothing to review."
+msgstr "Проверять нечего."
+
+msgid "Specialists' edits"
+msgstr "Правки специалистов"
+
+msgid "Change"
+msgstr "Изменение"
+
+msgid "Systems confirmed, by week"
+msgstr "Системы подтверждены по неделям"
+
+msgid "Week of"
+msgstr "Неделя с"
+
+msgid "Systems confirmed"
+msgstr "Системы подтверждены"
+
+msgid "No closed tickets yet."
+msgstr "Закрытых заявок пока нет."
+
+msgid "Corrections by system"
+msgstr "Исправления по системам"
+
+msgid "Removed"
+msgstr "Убрана"
+
+msgid "Added"
+msgstr "Добавлена"
+
+msgid "By specialist"
+msgstr "По специалистам"
+
+msgid ""
+"One who never corrects anything may not be checking; one whose edits are "
+"often reverted may need help."
+msgstr ""
+"Кто никогда ничего не исправляет, возможно, не проверяет; кому часто "
+"откатывают правки, возможно, нужна помощь."
+
+msgid "Without corrections"
+msgstr "Без исправлений"
+
+msgid "Edits confirmed"
+msgstr "Правки подтверждены"
+
+msgid "No data yet."
+msgstr "Данных пока нет."
+
+msgid "Recent decisions"
+msgstr "Последние решения"
+
+msgid "automatically"
+msgstr "автоматически"
+
+msgid "No decisions yet."
+msgstr "Решений пока нет."
 
 #, python-format
 msgid "Ticket #%(number)s"
@@ -487,6 +770,9 @@ msgstr "Заявка станет вашей и перейдёт в статус
 msgid "Close"
 msgstr "Закрыть"
 
+msgid "The vocabulary has no systems yet."
+msgstr "В словаре пока нет систем."
+
 msgid "Mark done"
 msgstr "Отметить выполненной"
 
@@ -498,7 +784,9 @@ msgid "Not for this department? The ticket goes to “%(department)s” as New."
 msgstr "Не для этого отдела? Заявка уйдёт в отдел «%(department)s» как новая."
 
 msgid "Every department has had this ticket; an admin can reassign it."
-msgstr "Заявка уже побывала во всех подходящих отделах; переназначить её может администратор."
+msgstr ""
+"Заявка уже побывала во всех подходящих отделах; переназначить её может "
+"администратор."
 
 msgid "Edit the fields"
 msgstr "Правка полей"
@@ -521,17 +809,16 @@ msgstr "Заявителям учётная запись не нужна: вос
 msgid "Wrong username or password."
 msgstr "Неверное имя пользователя или пароль."
 
-msgid "Username"
-msgstr "Имя пользователя"
-
 msgid "Password"
 msgstr "Пароль"
 
 msgid "New request"
 msgstr "Новое обращение"
 
-msgid "Too many requests from your address. Please wait a minute and send it again."
-msgstr "Слишком много обращений с вашего адреса. Подождите минуту и отправьте снова."
+msgid ""
+"Too many requests from your address. Please wait a minute and send it again."
+msgstr ""
+"Слишком много обращений с вашего адреса. Подождите минуту и отправьте снова."
 
 msgid "Processing…"
 msgstr "Обрабатывается…"
@@ -556,6 +843,27 @@ msgstr "Обращение ждёт, пока специалист его рас
 msgid "Send another request"
 msgstr "Отправить ещё одно обращение"
 
+msgid "Only a validator or an admin can review proposals."
+msgstr "Проверять предложения может только валидатор или администратор."
+
+msgid "Nobody reviews their own proposal: ask another validator."
+msgstr "Своё предложение проверять нельзя: попросите другого валидатора."
+
+msgid "The system id must be lowercase Latin letters, digits and _."
+msgstr "Идентификатор системы — строчные латинские буквы, цифры и _."
+
+msgid "A system with this id already exists."
+msgstr "Система с таким идентификатором уже есть."
+
+msgid "This proposal is already reviewed."
+msgstr "Это предложение уже проверено."
+
+msgid "This edit is already reviewed."
+msgstr "Эта правка уже проверена."
+
+msgid "Say why the edit is reverted."
+msgstr "Укажите, почему правка откатывается."
+
 msgid "Only the specialist working on the ticket can do this."
 msgstr "Это может только специалист, который работает с заявкой."
 
@@ -568,17 +876,8 @@ msgstr "Выполненную заявку вернуть нельзя."
 msgid "There is no other department to return the ticket to; ask an admin."
 msgstr "Вернуть заявку больше некуда; обратитесь к администратору."
 
+msgid "Unknown system."
+msgstr "Неизвестная система."
+
 msgid "Unknown department."
 msgstr "Неизвестный отдел."
-
-msgid "Assignee changed"
-msgstr "Исполнитель изменён"
-
-msgid "Enter a finite, non-negative weight."
-msgstr "Введите конечное неотрицательное число."
-
-msgid "Choose an active department."
-msgstr "Выберите действующий отдел."
-
-msgid "Choose an active specialist from this department."
-msgstr "Выберите активного специалиста из этого отдела."

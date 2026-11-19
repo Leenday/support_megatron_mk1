@@ -18,9 +18,17 @@ from django.shortcuts import redirect, render
 from django.utils.translation import get_language, gettext_lazy
 from django.utils.translation import gettext as _
 
-from support import workflow
-from support.forms import CloseForm, DeskFilterForm, ReturnForm, TicketEditForm
-from support.models import Department, System, Ticket, TicketEvent, User
+from support import vocabulary, workflow
+from support.forms import (
+    ApproveForm,
+    CloseForm,
+    DeskFilterForm,
+    EditReviewForm,
+    RejectForm,
+    ReturnForm,
+    TicketEditForm,
+)
+from support.models import Department, Proposal, System, Ticket, TicketEvent, User
 from support.services import visible_tickets
 
 LISTS = {
@@ -32,13 +40,16 @@ ROWS = 200  # a page this long is enough for one department; filters narrow it d
 
 
 def staff(request: HttpRequest) -> User:
-    """The logged-in specialist or admin; anyone else gets 403."""
+    """The logged-in specialist, admin or validator; anyone else gets 403."""
     user = request.user
-    if isinstance(user, User) and (
-        user.is_superuser or user.has_role("Specialist") or user.has_role("Admin")
-    ):
+    if isinstance(user, User) and (user.can_review() or user.has_role("Specialist")):
         return user
     raise PermissionDenied
+
+
+def works_tickets(user: User) -> bool:
+    """Specialists and admins take and close tickets; a validator only reviews (#57)."""
+    return user.is_superuser or user.has_role("Specialist") or user.has_role("Admin")
 
 
 def staff_only(view: Callable[..., HttpResponse]) -> Callable[..., HttpResponse]:
@@ -117,6 +128,7 @@ def queue(request: HttpRequest) -> HttpResponse:
         "rows": [(t, names[t.department_id]) for t in rows[:ROWS]],
         "more": len(rows) > ROWS,
         "is_specialist": user.has_role("Specialist"),
+        "works": works_tickets(user),
         "department": names.get(user.department_id or "", ""),
     }
     return render(request, "support/desk_queue.html", context)
@@ -152,6 +164,18 @@ def describe(event: TicketEvent, names: dict[str, str]) -> str:
                 "from": names.get(data["from"], data["from"]),
                 "to": names.get(data["to"], data["to"]),
             }
+        case TicketEvent.Kind.REVIEWED:
+            labels = [
+                str(field.verbose_name)
+                for field in Ticket._meta.concrete_fields
+                if field.attname in data.get("fields", [])
+            ]
+            text = (
+                _("Validator confirmed the edit of %(fields)s")
+                if data.get("decision") == "confirmed"
+                else _("Validator reverted the edit of %(fields)s")
+            ) % {"fields": ", ".join(labels)}
+            return f"{text}: {data['comment']}" if data.get("comment") else text
         case TicketEvent.Kind.STATUS_CHANGED if "department_correct" in data:
             if data.get("department_correct"):
                 return _("Done; the department was right")
@@ -166,7 +190,8 @@ def show_ticket(request: HttpRequest, ticket: Ticket, **forms) -> HttpResponse:
     names = department_names()
     system_names = dict(System.objects.values_list("id", "name"))
     own = ticket.status == Ticket.Status.IN_PROGRESS and ticket.assignee_id == user.pk
-    can_return = ticket.status == Ticket.Status.NEW or own
+    works = works_tickets(user)
+    can_return = works and (ticket.status == Ticket.Status.NEW or own)
     next_department = workflow.next_department(ticket) if can_return else None
     context = {
         "ticket": ticket,
@@ -175,17 +200,22 @@ def show_ticket(request: HttpRequest, ticket: Ticket, **forms) -> HttpResponse:
         "systems": [system_names.get(x, x) for x in ticket.systems],
         "saved": ticket.request,
         "events": [(e, describe(e, names)) for e in ticket.events.select_related("actor")],
-        "can_take": ticket.status == Ticket.Status.NEW,
+        "can_take": works and ticket.status == Ticket.Status.NEW,
         "own": own,
         "edit_form": forms.get("edit_form")
         or TicketEditForm(initial={f: getattr(ticket, f) for f in workflow.EDITABLE}),
         "return_form": forms.get("return_form") or ReturnForm(),
         "next_department": names.get(next_department or "") if can_return else None,
         "can_return": can_return,
-        "close_form": forms.get("close_form")
-        or CloseForm(language=language(), exclude=ticket.department_id),
+        "close_form": forms.get("close_form") or close_form(ticket),
+        "ask_system": bool(ticket.where) and not ticket.systems,
     }
     return render(request, "support/desk_ticket.html", context, status=400 if forms else 200)
+
+
+def close_form(ticket: Ticket, data=None) -> CloseForm:
+    initial = {"systems": list(ticket.systems), "proposal_text": ticket.where or ""}
+    return CloseForm(data, language=language(), exclude=ticket.department_id, initial=initial)
 
 
 @staff_only
@@ -200,6 +230,8 @@ def act(request: HttpRequest, pk: int, action: str) -> HttpResponse:
         return HttpResponseNotAllowed(["POST"])
     user = staff(request)
     ticket = find_ticket(user, pk)
+    if not works_tickets(user):
+        raise PermissionDenied
     try:
         match action:
             case "take":
@@ -223,15 +255,101 @@ def act(request: HttpRequest, pk: int, action: str) -> HttpResponse:
                 )
                 return redirect("desk")
             case "close":
-                form = CloseForm(request.POST, language=language(), exclude=ticket.department_id)
+                form = close_form(ticket, request.POST)
                 if not form.is_valid():
                     return show_ticket(request, ticket, close_form=form)
                 right = form.cleaned_data["correct"] == "yes"
                 department = None if right else form.cleaned_data["department"].pk
-                workflow.close(pk, user, correct_department=department)
+                workflow.close(
+                    pk,
+                    user,
+                    correct_department=department,
+                    systems=form.confirmed_systems(),
+                    proposal=form.vocabulary_proposal(),
+                )
                 messages.success(request, _("The ticket is done."))
             case _:
                 raise Http404
     except workflow.ActionRefused as e:
         messages.error(request, str(e))
     return redirect("desk_ticket", pk=pk)
+
+
+def reviewer(request: HttpRequest) -> User:
+    user = staff(request)
+    if not user.can_review():
+        raise PermissionDenied
+    return user
+
+
+@staff_only
+def review(request: HttpRequest) -> HttpResponse:
+    """The validator's page (#57): vocabulary proposals grouped, field edits, and how the
+    vocabulary does in operation."""
+    user = reviewer(request)
+    names = department_names()
+    system_names = dict(System.objects.values_list("id", "name"))
+    labels = {f.attname: str(f.verbose_name) for f in Ticket._meta.concrete_fields}
+    edits = [
+        (p, [(labels.get(f, f), old, new) for f, (old, new) in p.changes.items()])
+        for p in vocabulary.pending_edits()
+    ]
+    context = {
+        "groups": vocabulary.vocabulary_groups(),
+        "edits": edits,
+        "weeks": vocabulary.weekly_systems(),
+        "specialists": vocabulary.by_specialist(),
+        "corrections": vocabulary.corrections_by_system(),
+        "system_names": system_names,
+        "department_names": names,
+        "decided": Proposal.objects.exclude(status=Proposal.Status.PENDING)
+        .select_related("proposed_by", "reviewed_by", "system")
+        .order_by("-reviewed_at")[:20],
+        "me": user.pk,
+    }
+    return render(request, "support/desk_review.html", context)
+
+
+@staff_only
+def review_action(request: HttpRequest, pk: int, action: str) -> HttpResponse:
+    """POST /desk/review/<proposal>/<action>/: approve, reject, confirm or revert."""
+    if request.method != "POST":
+        return HttpResponseNotAllowed(["POST"])
+    user = reviewer(request)
+    try:
+        match action:
+            case "approve":
+                form = ApproveForm(request.POST)
+                form.is_valid()
+                system = vocabulary.approve(
+                    pk,
+                    user,
+                    system_id=form.cleaned_data.get("system_id", "").strip(),
+                    name=form.cleaned_data.get("name", "").strip(),
+                )
+                messages.success(
+                    request,
+                    _("Approved: the next request gets “%(system)s” in the vocabulary.")
+                    % {"system": system.name},
+                )
+            case "reject":
+                form = RejectForm(request.POST)
+                if not form.is_valid():
+                    messages.error(request, _("Say why the proposal is rejected."))
+                    return redirect("desk_review")
+                vocabulary.reject(pk, user, form.cleaned_data["reason"])
+                messages.success(request, _("Rejected; it will not be asked again."))
+            case "edit":
+                form = EditReviewForm(request.POST)
+                if not form.is_valid():
+                    raise Http404
+                confirm = form.cleaned_data["decision"] == "confirm"
+                vocabulary.review_edit(pk, user, confirm, form.cleaned_data["comment"])
+                messages.success(request, _("Edit confirmed.") if confirm else _("Edit reverted."))
+            case _:
+                raise Http404
+    except Proposal.DoesNotExist as e:
+        raise Http404 from e
+    except workflow.ActionRefused as e:
+        messages.error(request, str(e))
+    return redirect("desk_review")

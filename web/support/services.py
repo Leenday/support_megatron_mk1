@@ -36,6 +36,7 @@ from support.models import (
     TicketEvent,
     User,
 )
+from support.vocabulary import vocabulary_version
 
 logger = logging.getLogger(__name__)
 
@@ -167,12 +168,14 @@ def extract(text: str, extractor_factory: ExtractorFactory | None = None) -> Ext
 
 
 def visible_tickets(user: User) -> QuerySet[Ticket]:
-    """The tickets a user may see: admins all, specialists their department's, others their own.
+    """The tickets a user may see: admins and validators all, specialists their department's,
+    others their own.
 
     "Others" are accounts that send requests through the API, such as an integration.
+    Validators see every ticket because proposals and edits come from all departments (#57).
     """
     tickets = Ticket.objects.select_related("department", "assignee", "request")
-    if user.is_superuser or user.has_role("Admin"):
+    if user.is_superuser or user.has_role("Admin") or user.has_role("Validator"):
         return tickets
     if user.has_role("Specialist"):
         return (
@@ -197,7 +200,11 @@ def create_ticket(
     """
     config = departments_config()
     request = Request(
-        text=text, contact=contact, requester=requester, prompt_version=PROMPT_VERSION
+        text=text,
+        contact=contact,
+        requester=requester,
+        prompt_version=PROMPT_VERSION,
+        vocabulary_version=vocabulary_version(),
     )
     start = time.perf_counter()
     try:

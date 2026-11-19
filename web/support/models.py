@@ -28,10 +28,12 @@ if TYPE_CHECKING:
 
 SPECIALIST_ROLE = "Specialist"
 ADMIN_ROLE = "Admin"
-ROLES = (SPECIALIST_ROLE, ADMIN_ROLE)
+VALIDATOR_ROLE = "Validator"  # reviews vocabulary proposals and specialists' edits (#57)
+ROLES = (SPECIALIST_ROLE, ADMIN_ROLE, VALIDATOR_ROLE)
 ROLE_LABELS = {
     SPECIALIST_ROLE: _("Specialist"),
     ADMIN_ROLE: _("Administrator"),
+    VALIDATOR_ROLE: _("Validator"),
 }
 
 
@@ -80,6 +82,12 @@ class User(AbstractUser):
 
     def can_access_admin(self) -> bool:
         return self.is_active and (self.is_superuser or self.has_role(ADMIN_ROLE))
+
+    def can_review(self) -> bool:
+        """Validators and admins review proposals and edits (#57)."""
+        return self.is_active and (
+            self.is_superuser or self.has_role(VALIDATOR_ROLE) or self.has_role(ADMIN_ROLE)
+        )
 
 
 class Department(models.Model):
@@ -188,6 +196,14 @@ class RoutingSettings(models.Model):
         default=default_languages,
         help_text=_("ISO 639-1 codes; the first is the default."),
     )
+    spelling_auto_approve = models.PositiveSmallIntegerField(
+        _("Approve a spelling automatically after"),
+        default=0,
+        help_text=_(
+            "A new spelling of a known system is approved without a validator once this many "
+            "different specialists proposed it; 0 = never. New systems always need a validator."
+        ),
+    )
 
     class Meta:
         verbose_name = verbose_name_plural = _("routing settings")
@@ -228,6 +244,12 @@ class Request(models.Model):
     created_at = models.DateTimeField(_("Created"), auto_now_add=True)
     model = models.CharField(_("Model"), max_length=100, blank=True)
     prompt_version = models.CharField(_("Prompt version"), max_length=20, blank=True)
+    vocabulary_version = models.CharField(
+        _("Vocabulary version"),
+        max_length=12,
+        blank=True,
+        help_text=_("Hash of the active systems with their spellings when the request came."),
+    )
     attempts = models.PositiveSmallIntegerField(_("Attempts"), null=True)
     dropped_identifiers = models.JSONField(_("Dropped identifiers"), default=list, blank=True)
     seconds = models.FloatField(_("Seconds"), null=True)
@@ -312,6 +334,7 @@ class TicketEvent(models.Model):
         EDITED = "edited", _("Edited")
         RETURNED = "returned", _("Returned")
         REASSIGNED = "reassigned", _("Reassigned")
+        REVIEWED = "reviewed", _("Reviewed")
 
     ticket = models.ForeignKey(
         Ticket, verbose_name=_("Ticket"), on_delete=models.CASCADE, related_name="events"
@@ -335,6 +358,80 @@ class TicketEvent(models.Model):
 
     def __str__(self) -> str:
         return f"{self.kind} #{self.ticket_id}"
+
+
+class Proposal(models.Model):
+    """A change proposed by a specialist, waiting for a validator (#57).
+
+    Vocabulary proposals come from closing a ticket: a new system, or another spelling of a
+    known one. A field edit comes from a specialist changing the model's answer by hand. The
+    row is the change's record: who proposed it, who reviewed it, when and why.
+    """
+
+    class Kind(models.TextChoices):
+        NEW_SYSTEM = "new_system", _("New system")
+        SPELLING = "spelling", _("Spelling")
+        FIELD_EDIT = "field_edit", _("Field edit")
+
+    class Status(models.TextChoices):
+        PENDING = "pending", _("Pending")
+        APPROVED = "approved", _("Approved")
+        REJECTED = "rejected", _("Rejected")
+
+    VOCABULARY = (Kind.NEW_SYSTEM, Kind.SPELLING)
+
+    kind = models.CharField(_("Kind"), max_length=20, choices=Kind.choices)
+    status = models.CharField(
+        _("Status"), max_length=20, choices=Status.choices, default=Status.PENDING
+    )
+    ticket = models.ForeignKey(
+        Ticket, verbose_name=_("Ticket"), on_delete=models.CASCADE, related_name="proposals"
+    )
+    proposed_by = models.ForeignKey(
+        User,
+        verbose_name=_("Proposed by"),
+        null=True,
+        on_delete=models.SET_NULL,
+        related_name="proposals",
+    )
+    system = models.ForeignKey(
+        System,
+        verbose_name=_("System"),
+        null=True,
+        blank=True,
+        on_delete=models.CASCADE,
+        help_text=_("Spelling: the system it belongs to; new system: the one created."),
+    )
+    text = models.CharField(
+        _("Text"), max_length=200, blank=True, help_text=_("The system's name or the spelling.")
+    )
+    key = models.CharField(
+        max_length=200, blank=True, help_text=_("Normalised text: similar proposals group by it.")
+    )
+    changes = models.JSONField(
+        _("Changes"), default=dict, blank=True, help_text=_("Field edit: {field: [old, new]}.")
+    )
+    created_at = models.DateTimeField(_("Created"), auto_now_add=True)
+    reviewed_by = models.ForeignKey(
+        User,
+        verbose_name=_("Reviewed by"),
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="reviews",
+        help_text=_("Empty with a decision = approved automatically."),
+    )
+    reviewed_at = models.DateTimeField(_("Reviewed"), null=True, blank=True)
+    comment = models.CharField(_("Comment"), max_length=500, blank=True)
+
+    class Meta:
+        verbose_name = _("proposal")
+        verbose_name_plural = _("proposals")
+        ordering = ["created_at", "pk"]
+        indexes = [models.Index(fields=["kind", "status", "key"])]
+
+    def __str__(self) -> str:
+        return f"{self.get_kind_display()}: {self.text or self.ticket_id}"
 
 
 class ApiToken(models.Model):

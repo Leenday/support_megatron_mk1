@@ -1,0 +1,127 @@
+{% extends "support/base.html" %}{% load i18n %}
+{% block title %}{% translate "Review" %}{% endblock %}
+{% block width %}wide{% endblock %}{% block main_width %}wide{% endblock %}
+{% block content %}
+<h1>{% translate "Review" %}</h1>
+<p class="help">{% translate "Proposals from closed tickets and specialists' edits. An approved change reaches the next request at once; nobody reviews their own." %}</p>
+
+<div class="card">
+  <h2>{% translate "Vocabulary proposals" %} <span class="count">{{ groups|length }}</span></h2>
+  {% if groups %}
+  <div class="table-scroll"><table>
+    <thead><tr>
+      <th>{% translate "Proposal" %}</th><th>{% translate "Times" %}</th><th>{% translate "Specialists" %}</th><th>{% translate "Tickets" %}</th><th>{% translate "Decision" %}</th>
+    </tr></thead>
+    <tbody>
+    {% for group in groups %}
+      <tr>
+        <td>
+          {% if group.first.kind == "spelling" %}
+            {% blocktranslate with text=group.texts.0 system=group.first.system.name %}“{{ text }}” as a spelling of {{ system }}{% endblocktranslate %}
+          {% else %}
+            {% blocktranslate with text=group.texts.0 %}New system “{{ text }}”{% endblocktranslate %}
+          {% endif %}
+          {% if group.texts|length > 1 %}<br><span class="help">{{ group.texts|join:", " }}</span>{% endif %}
+        </td>
+        <td>{{ group.proposals|length }}</td>
+        <td>{{ group.specialists|join:", " }}</td>
+        <td>{% for pk in group.tickets %}<a href="{% url 'desk_ticket' pk %}">#{{ pk }}</a> {% endfor %}</td>
+        <td>
+          <form method="post" action="{% url 'desk_review_action' group.first.pk 'approve' %}">{% csrf_token %}
+            {% if group.first.kind == "new_system" %}
+              <input type="text" name="system_id" value="{{ group.suggested_id }}" aria-label="{% translate 'System ID' %}" style="width: 10em">
+              <input type="text" name="name" value="{{ group.texts.0 }}" aria-label="{% translate 'Name' %}" style="width: 10em">
+            {% endif %}
+            <button>{% translate "Approve" %}</button>
+          </form>
+          <form method="post" action="{% url 'desk_review_action' group.first.pk 'reject' %}">{% csrf_token %}
+            <input type="text" name="reason" required placeholder="{% translate 'Reason' %}" aria-label="{% translate 'Reason' %}" style="width: 12em">
+            <button>{% translate "Reject" %}</button>
+          </form>
+        </td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table></div>
+  {% else %}<p class="help">{% translate "Nothing to review." %}</p>{% endif %}
+</div>
+
+<div class="card">
+  <h2>{% translate "Specialists' edits" %} <span class="count">{{ edits|length }}</span></h2>
+  {% if edits %}
+  <div class="table-scroll"><table>
+    <thead><tr><th>{% translate "Ticket" %}</th><th>{% translate "Specialist" %}</th><th>{% translate "Change" %}</th><th>{% translate "Decision" %}</th></tr></thead>
+    <tbody>
+    {% for proposal, changes in edits %}
+      <tr>
+        <td><a href="{% url 'desk_ticket' proposal.ticket_id %}">#{{ proposal.ticket_id }}</a></td>
+        <td>{{ proposal.proposed_by|default:"—" }}</td>
+        <td>{% for label, old, new in changes %}<div><b>{{ label }}</b>: {{ old|default:"—" }} → {{ new|default:"—" }}</div>{% endfor %}</td>
+        <td>
+          <form method="post" action="{% url 'desk_review_action' proposal.pk 'edit' %}">{% csrf_token %}
+            <input type="text" name="comment" placeholder="{% translate 'Comment' %}" aria-label="{% translate 'Comment' %}" style="width: 12em">
+            <button name="decision" value="confirm">{% translate "Confirm" %}</button>
+            <button name="decision" value="revert">{% translate "Revert" %}</button>
+          </form>
+        </td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table></div>
+  {% else %}<p class="help">{% translate "Nothing to review." %}</p>{% endif %}
+</div>
+
+<div class="grid">
+  <div class="card">
+    <h2>{% translate "Systems confirmed, by week" %}</h2>
+    <table>
+      <thead><tr><th>{% translate "Week of" %}</th><th>{% translate "Closed" %}</th><th>{% translate "Systems confirmed" %}</th></tr></thead>
+      <tbody>
+      {% for row in weeks %}
+        <tr><td>{{ row.week|date:"SHORT_DATE_FORMAT" }}</td><td>{{ row.closed }}</td><td>{{ row.systems_confirmed }}{% if row.share is not None %} ({% widthratio row.systems_confirmed row.closed 100 %} %){% endif %}</td></tr>
+      {% empty %}<tr><td colspan="3" class="help">{% translate "No closed tickets yet." %}</td></tr>{% endfor %}
+      </tbody>
+    </table>
+    {% if corrections %}
+    <h2 style="margin-top: 16px">{% translate "Corrections by system" %}</h2>
+    <table>
+      <thead><tr><th>{% translate "System" %}</th><th>{% translate "Removed" %}</th><th>{% translate "Added" %}</th></tr></thead>
+      <tbody>{% for name, removed, added in corrections %}<tr><td>{{ name }}</td><td>{{ removed }}</td><td>{{ added }}</td></tr>{% endfor %}</tbody>
+    </table>
+    {% endif %}
+  </div>
+  <div class="card">
+    <h2>{% translate "By specialist" %}</h2>
+    <p class="help">{% translate "One who never corrects anything may not be checking; one whose edits are often reverted may need help." %}</p>
+    <table>
+      <thead><tr><th>{% translate "Specialist" %}</th><th>{% translate "Closed" %}</th><th>{% translate "Without corrections" %}</th><th>{% translate "Edits confirmed" %}</th></tr></thead>
+      <tbody>
+      {% for row in specialists %}
+        <tr>
+          <td>{{ row.name }}</td><td>{{ row.closed }}</td>
+          <td>{% if row.closed %}{% widthratio row.untouched row.closed 100 %} %{% else %}—{% endif %}</td>
+          <td>{% if row.confirmed_share is not None %}{{ row.edits_confirmed }} / {{ row.edits_confirmed|add:row.edits_reverted }}{% else %}—{% endif %}</td>
+        </tr>
+      {% empty %}<tr><td colspan="4" class="help">{% translate "No data yet." %}</td></tr>{% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="card">
+  <h2>{% translate "Recent decisions" %}</h2>
+  <table>
+    <tbody>
+    {% for p in decided %}
+      <tr>
+        <td>{{ p.reviewed_at|date:"SHORT_DATETIME_FORMAT" }}</td>
+        <td>{{ p.get_kind_display }}{% if p.text %}: {{ p.text }}{% endif %}{% if p.system %} ({{ p.system.name }}){% endif %}</td>
+        <td>{{ p.get_status_display }}{% if p.comment %} — {{ p.comment }}{% endif %}</td>
+        <td>{{ p.proposed_by|default:"—" }} → {{ p.reviewed_by|default:_("automatically") }}</td>
+        <td><a href="{% url 'desk_ticket' p.ticket_id %}">#{{ p.ticket_id }}</a></td>
+      </tr>
+    {% empty %}<tr><td class="help">{% translate "No decisions yet." %}</td></tr>{% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

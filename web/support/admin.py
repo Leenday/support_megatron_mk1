@@ -25,6 +25,7 @@ from support.models import (
     ROLES,
     ApiToken,
     Department,
+    Proposal,
     Request,
     RoutingSettings,
     System,
@@ -294,6 +295,16 @@ class RequestAdmin(SupportModelAdmin):
 class TicketEventAdmin(SupportModelAdmin):
     list_display = ("ticket", "kind", "actor", "at")
     list_filter = ("kind", "at")
+
+
+@admin.register(Proposal, site=site)
+class ProposalAdmin(SupportModelAdmin):
+    """The record of vocabulary changes and edit reviews (#57); decisions are made at
+    /desk/review/, so nobody approves their own proposal."""
+
+    list_display = ("kind", "text", "system", "status", "proposed_by", "reviewed_by", "reviewed_at")
+    list_filter = ("kind", "status", "created_at")
+    search_fields = ("text", "comment")
 
 
 @admin.register(ApiToken, site=site)

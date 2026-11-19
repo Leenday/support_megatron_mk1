@@ -50,6 +50,18 @@
         <label>{{ close_form.correct.label }}</label>
         <ul class="radio">{% for radio in close_form.correct %}<li>{{ radio }}</li>{% endfor %}</ul>
         {{ close_form.department }}{{ close_form.department.errors }}
+        {{ close_form.systems_shown }}
+        <label>{{ close_form.systems.label }}</label>
+        <ul class="radio">{% for box in close_form.systems %}<li>{{ box }}</li>{% empty %}<li class="help">{% translate "The vocabulary has no systems yet." %}</li>{% endfor %}</ul>
+        <p class="help">{{ close_form.systems.help_text }}</p>{{ close_form.systems.errors }}
+        <details{% if ask_system or close_form.errors %} open{% endif %}>
+          <summary>{{ close_form.proposal.label }}</summary>
+          <ul class="radio">{% for radio in close_form.proposal %}<li>{{ radio }}</li>{% endfor %}</ul>
+          {{ close_form.proposal_system }}{{ close_form.proposal_system.errors }}
+          <label for="{{ close_form.proposal_text.id_for_label }}">{{ close_form.proposal_text.label }}</label>
+          {{ close_form.proposal_text }}{{ close_form.proposal_text.errors }}
+          <p class="help">{{ close_form.proposal_text.help_text }}</p>
+        </details>
         <br><button>{% translate "Mark done" %}</button>
       </form>
     </div>
