@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-11-12 08:06+0300\n"
+"POT-Creation-Date: 2026-11-12 22:44+0300\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: Russian\n"
@@ -15,9 +15,46 @@ msgstr ""
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"Plural-Forms: nplurals=4; plural=(n%10==1 && n%100!=11 ? 0 : n%10>=2 && "
-"n%10<=4 && (n%100<12 || n%100>14) ? 1 : n%10==0 || (n%10>=5 && n%10<=9) || "
-"(n%100>=11 && n%100<=14)? 2 : 3);\n"
+"Plural-Forms: nplurals=4; plural=(n%10==1 && n%100!=11 ? 0 : n%10>=2 && n%10<=4 && (n%100<12 || n%100>14) ? 1 : n%10==0 || (n%10>=5 && n%10<=9) || (n%100>=11 && n%100<=14)? 2 : 3);\n"
+
+msgid "Megatron · Administration"
+msgstr "Megatron · Панель управления"
+
+msgid "Dashboard"
+msgstr "Дашборд"
+
+msgid "Role"
+msgstr "Роль"
+
+msgid "Open tickets"
+msgstr "Открытые заявки"
+
+msgid "Load"
+msgstr "Загрузка"
+
+msgid "Routing accuracy"
+msgstr "Точность маршрутизации"
+
+msgid "Department name"
+msgstr "Название отдела"
+
+msgid "Ticket history"
+msgstr "История заявки"
+
+msgid "System"
+msgstr "Система"
+
+msgid "Extraction result"
+msgstr "Результат обработки"
+
+msgid "Failed"
+msgstr "С ошибкой"
+
+msgid "Succeeded"
+msgstr "Успешно"
+
+msgid "Support"
+msgstr "Поддержка"
 
 msgid "Queue"
 msgstr "Очередь"
@@ -43,6 +80,10 @@ msgstr "Изменены поля: %(fields)s"
 msgid "Returned from “%(from)s” to “%(to)s”: %(reason)s"
 msgstr "Возвращена из отдела «%(from)s» в отдел «%(to)s»: %(reason)s"
 
+#, python-format
+msgid "Reassigned from “%(from)s” to “%(to)s”"
+msgstr "Переназначена из отдела «%(from)s» в отдел «%(to)s»"
+
 msgid "Done; the department was right"
 msgstr "Выполнена; отдел верный"
 
@@ -63,12 +104,41 @@ msgstr "Возвращена в отдел «%(department)s»."
 msgid "The ticket is done."
 msgstr "Заявка выполнена."
 
+msgid "Choose an active department for the specialist."
+msgstr "Выберите действующий отдел для специалиста."
+
+msgid "Fallback"
+msgstr "Резервный отдел"
+
+msgid "Send requests here when no other department fits. Selecting this replaces the current fallback."
+msgstr "Сюда поступают обращения, для которых не подошёл другой отдел. Выбор заменяет текущий резервный отдел."
+
+msgid "Enter a non-empty JSON list of tags."
+msgstr "Введите непустой список тегов в формате JSON."
+
+msgid "Choose a language enabled in routing settings."
+msgstr "Выберите язык, включённый в настройках маршрутизации."
+
+msgid "The fallback department must be active."
+msgstr "Резервный отдел должен быть активен."
+
+msgid "Select a different fallback department first."
+msgstr "Сначала назначьте другой резервный отдел."
+
+msgid "Enter strictly decreasing numbers between 0 and 1, excluding 0."
+msgstr "Введите строго убывающие числа больше 0 и не больше 1."
+
+msgid "Enter a JSON list of language codes such as ru and en."
+msgstr "Введите список кодов языков в формате JSON, например ru и en."
+
+msgid "Keep all languages used by active departments."
+msgstr "Сохраните все языки, используемые активными отделами."
+
 msgid "Describe the problem in your own words"
 msgstr "Опишите проблему своими словами"
 
 msgid "Russian or English. Who, where, when and what happened, if you know."
-msgstr ""
-"На русском или английском. Кто, где, когда и что случилось, если знаете."
+msgstr "На русском или английском. Кто, где, когда и что случилось, если знаете."
 
 msgid "How to reach you"
 msgstr "Как с вами связаться"
@@ -84,9 +154,6 @@ msgstr "Любой"
 
 msgid "Tag"
 msgstr "Тег"
-
-msgid "System"
-msgstr "Система"
 
 msgid "From"
 msgstr "С"
@@ -136,6 +203,150 @@ msgstr "Выберите отдел"
 msgid "Choose the department that should have got it."
 msgstr "Выберите отдел, в который она должна была уйти."
 
+msgid "Requester"
+msgstr "Заявитель"
+
+msgid "Specialist"
+msgstr "Специалист"
+
+msgid "Administrator"
+msgstr "Администратор"
+
+msgid "Specialists only: the department whose tickets they work on."
+msgstr "Отдел, с заявками которого работает специалист."
+
+msgid "Department ID"
+msgstr "Идентификатор отдела"
+
+msgid "Stable id: the model returns it, and the YAML import matches by it."
+msgstr "Постоянный идентификатор. Его возвращает модель, и по нему импорт из YAML находит отдел."
+
+msgid "Name in Russian"
+msgstr "Название на русском"
+
+msgid "Name in English"
+msgstr "Название на английском"
+
+msgid "Description"
+msgstr "Описание"
+
+msgid "The model reads this to choose the department: describe what it handles."
+msgstr "Модель читает описание при выборе отдела. Укажите, какие обращения он обрабатывает."
+
+msgid "Keywords, shown to the model as well."
+msgstr "Ключевые слова, которые видит модель."
+
+msgid "Language"
+msgstr "Язык"
+
+msgid "Language of the department's tickets."
+msgstr "Язык заявок отдела."
+
+msgid "Capacity"
+msgstr "Ёмкость"
+
+msgid "Open tickets the department can handle at once; empty = load not used."
+msgstr "Сколько открытых заявок отдел может обработать одновременно. Пустое значение отключает учёт загрузки."
+
+msgid "Receives requests that fit no other department."
+msgstr "Получает обращения, для которых не подошёл другой отдел."
+
+msgid "Active"
+msgstr "Активен"
+
+msgid "Inactive departments are not offered to the model."
+msgstr "Неактивные отделы не предлагаются модели."
+
+msgid "department"
+msgstr "отдел"
+
+msgid "departments"
+msgstr "отделы"
+
+msgid "System ID"
+msgstr "Идентификатор системы"
+
+msgid "Name"
+msgstr "Название"
+
+msgid "Spellings"
+msgstr "Варианты написания"
+
+msgid "How requests write it: names, abbreviations, transliterations. The model reads them."
+msgstr "Названия, сокращения и транслитерации из обращений. Модель учитывает эти варианты."
+
+msgid "Inactive systems are not offered."
+msgstr "Неактивные системы не предлагаются модели."
+
+msgid "system"
+msgstr "система"
+
+msgid "systems"
+msgstr "системы"
+
+msgid "Profile weight"
+msgstr "Вес соответствия профилю"
+
+msgid "Load weight"
+msgstr "Вес загрузки"
+
+msgid "Rank scores"
+msgstr "Оценки по рангу"
+
+msgid "Profile match of the model's 1st, 2nd, ... candidate, decreasing."
+msgstr "Оценки соответствия первого, второго и следующих кандидатов модели по убыванию."
+
+msgid "Ticket languages"
+msgstr "Языки заявок"
+
+msgid "ISO 639-1 codes; the first is the default."
+msgstr "Коды ISO 639-1. Первый язык используется по умолчанию."
+
+msgid "routing settings"
+msgstr "настройки маршрутизации"
+
+msgid "Routing settings"
+msgstr "Настройки маршрутизации"
+
+msgid "Request text"
+msgstr "Текст обращения"
+
+msgid "Contact"
+msgstr "Контакт"
+
+msgid "E-mail, phone or messenger of the requester."
+msgstr "Почта, телефон или мессенджер заявителя."
+
+msgid "Created"
+msgstr "Создана"
+
+msgid "Model"
+msgstr "Модель"
+
+msgid "Prompt version"
+msgstr "Версия промпта"
+
+msgid "Attempts"
+msgstr "Попытки"
+
+msgid "Dropped identifiers"
+msgstr "Удалённые идентификаторы"
+
+msgid "Seconds"
+msgstr "Секунды"
+
+msgid "Error"
+msgstr "Ошибка"
+
+msgid "Secret part of the requester's status link."
+msgstr "Секретная часть ссылки на статус обращения."
+
+msgid "request"
+msgstr "обращение"
+
+msgid "request log"
+msgstr "журнал обращений"
+
 msgid "New"
 msgstr "Новая"
 
@@ -145,32 +356,110 @@ msgstr "В работе"
 msgid "Done"
 msgstr "Выполнена"
 
-msgid "Support"
-msgstr "Поддержка"
+msgid "Request"
+msgstr "Обращение"
 
-msgid "Dashboard"
-msgstr "Дашборд"
+msgid "Systems"
+msgstr "Системы"
 
-msgid "Log out"
-msgstr "Выйти"
+msgid "System ids, see System."
+msgstr "Идентификаторы из справочника систем."
 
-msgid ""
-"You have no department yet, so the queue is empty. Ask an admin to set it."
-msgstr ""
-"У вас ещё нет отдела, поэтому очередь пуста. Попросите администратора его "
-"указать."
+msgid "Identifiers"
+msgstr "Идентификаторы"
 
-msgid "Show"
-msgstr "Показать"
+msgid "Model's candidates"
+msgstr "Кандидаты модели"
+
+msgid "Department ids, best fit first."
+msgstr "Идентификаторы отделов в порядке убывания соответствия."
+
+msgid "Assignee"
+msgstr "Исполнитель"
+
+msgid "Taken"
+msgstr "Взята"
+
+msgid "Closed"
+msgstr "Закрыта"
+
+msgid "ticket"
+msgstr "заявка"
+
+msgid "tickets"
+msgstr "заявки"
+
+msgid "Status changed"
+msgstr "Статус изменён"
+
+msgid "Edited"
+msgstr "Изменена"
+
+msgid "Returned"
+msgstr "Возвращена"
+
+msgid "Reassigned"
+msgstr "Переназначена"
 
 msgid "Ticket"
 msgstr "Заявка"
 
+msgid "Event type"
+msgstr "Тип события"
+
+msgid "Actor"
+msgstr "Автор события"
+
+msgid "Empty = the system."
+msgstr "Пустое значение означает действие системы."
+
+msgid "Event data"
+msgstr "Данные события"
+
+msgid "Event time"
+msgstr "Время события"
+
+msgid "ticket event"
+msgstr "событие заявки"
+
+msgid "ticket events"
+msgstr "события заявок"
+
+msgid "User"
+msgstr "Пользователь"
+
+msgid "What the token is for, e.g. the script."
+msgstr "Назначение токена, например имя скрипта."
+
+msgid "Hint"
+msgstr "Начало токена"
+
+msgid "Start of the token, to tell tokens apart."
+msgstr "Первые символы, по которым можно отличить токены."
+
+msgid "Last used"
+msgstr "Последнее использование"
+
+msgid "API token"
+msgstr "токен API"
+
+msgid "API tokens"
+msgstr "токены API"
+
+msgid "Log out"
+msgstr "Выйти"
+
+msgid "Export departments to YAML"
+msgstr "Выгрузить отделы в YAML"
+
+msgid "You have no department yet, so the queue is empty. Ask an admin to set it."
+msgstr "У вас ещё нет отдела, поэтому очередь пуста. Попросите администратора его указать."
+
+msgid "Show"
+msgstr "Показать"
+
 msgid "Age"
 msgstr "Ждёт"
-
-msgid "Specialist"
-msgstr "Специалист"
 
 msgid "Take"
 msgstr "Взять в работу"
@@ -185,30 +474,9 @@ msgstr "Заявок нет."
 msgid "Ticket #%(number)s"
 msgstr "Заявка №%(number)s"
 
-msgid "Systems"
-msgstr "Системы"
-
-msgid "Identifiers"
-msgstr "Идентификаторы"
-
-msgid "Model's candidates"
-msgstr "Кандидаты модели"
-
-msgid "Created"
-msgstr "Создана"
-
-msgid "Taken"
-msgstr "Взята"
-
-msgid "Closed"
-msgstr "Закрыта"
-
 #, python-format
 msgid "Request #%(number)s"
 msgstr "Обращение №%(number)s"
-
-msgid "Contact"
-msgstr "Контакт"
 
 msgid "Sent"
 msgstr "Отправлено"
@@ -230,9 +498,7 @@ msgid "Not for this department? The ticket goes to “%(department)s” as New."
 msgstr "Не для этого отдела? Заявка уйдёт в отдел «%(department)s» как новая."
 
 msgid "Every department has had this ticket; an admin can reassign it."
-msgstr ""
-"Заявка уже побывала во всех подходящих отделах; переназначить её может "
-"администратор."
+msgstr "Заявка уже побывала во всех подходящих отделах; переназначить её может администратор."
 
 msgid "Edit the fields"
 msgstr "Правка полей"
@@ -264,10 +530,8 @@ msgstr "Пароль"
 msgid "New request"
 msgstr "Новое обращение"
 
-msgid ""
-"Too many requests from your address. Please wait a minute and send it again."
-msgstr ""
-"Слишком много обращений с вашего адреса. Подождите минуту и отправьте снова."
+msgid "Too many requests from your address. Please wait a minute and send it again."
+msgstr "Слишком много обращений с вашего адреса. Подождите минуту и отправьте снова."
 
 msgid "Processing…"
 msgstr "Обрабатывается…"
@@ -306,3 +570,15 @@ msgstr "Вернуть заявку больше некуда; обратите�
 
 msgid "Unknown department."
 msgstr "Неизвестный отдел."
+
+msgid "Assignee changed"
+msgstr "Исполнитель изменён"
+
+msgid "Enter a finite, non-negative weight."
+msgstr "Введите конечное неотрицательное число."
+
+msgid "Choose an active department."
+msgstr "Выберите действующий отдел."
+
+msgid "Choose an active specialist from this department."
+msgstr "Выберите активного специалиста из этого отдела."

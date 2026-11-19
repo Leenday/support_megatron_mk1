@@ -7,12 +7,15 @@ only feeds it the departments from the database and saves the result.
 
 import logging
 import time
+from collections import Counter
 from collections.abc import Callable
+from itertools import groupby
+from operator import itemgetter
 from pathlib import Path
 
 import yaml
 from django.db import transaction
-from django.db.models import Count, QuerySet
+from django.db.models import Count, Q, QuerySet
 from django.utils import timezone
 from pydantic import BaseModel, Field
 
@@ -47,6 +50,48 @@ def open_ticket_counts() -> dict[str, int]:
         .annotate(n=Count("pk"))
         .values_list("department", "n")
     )
+
+
+def department_accuracy() -> dict[str, tuple[int, int]]:
+    """Correct decisions and all assessed decisions per department."""
+    kinds = TicketEvent.Kind
+    events = (
+        TicketEvent.objects.filter(
+            Q(kind__in=(kinds.CREATED, kinds.RETURNED, kinds.REASSIGNED))
+            | Q(kind=kinds.STATUS_CHANGED, data__has_key="department_correct")
+        )
+        .order_by("ticket_id", "at", "pk")
+        .values_list("ticket_id", "kind", "data", "ticket__department_id")
+        .iterator()
+    )
+    correct: Counter[str] = Counter()
+    assessed: Counter[str] = Counter()
+    for _, history in groupby(events, key=itemgetter(0)):
+        rows = list(history)
+        department = next(
+            (
+                source
+                for _, kind, data, _ in rows
+                if (
+                    source := data.get(
+                        "department" if kind in (kinds.CREATED, kinds.STATUS_CHANGED) else "from"
+                    )
+                )
+            ),
+            rows[0][3],
+        )
+        for _, kind, data, _ in rows:
+            if kind == kinds.CREATED:
+                department = data.get("department") or department
+            elif kind == kinds.STATUS_CHANGED:
+                target = data.get("department") or department
+                assessed[target] += 1
+                correct[target] += int(data["department_correct"] is True)
+            else:
+                if kind == kinds.RETURNED:
+                    assessed[data.get("from") or department] += 1
+                department = data.get("to") or department
+    return {department: (correct[department], count) for department, count in assessed.items()}
 
 
 def departments_config() -> DepartmentsConfig:

@@ -134,7 +134,9 @@ def describe(event: TicketEvent, names: dict[str, str]) -> str:
             return _("Taken in progress")
         case TicketEvent.Kind.EDITED:
             labels = [
-                str(TicketEditForm.base_fields[f].label) for f in data if f in workflow.EDITABLE
+                str(field.verbose_name)
+                for field in Ticket._meta.concrete_fields
+                if field.attname in data
             ]
             return _("Edited: %(fields)s") % {"fields": ", ".join(labels)}
         case TicketEvent.Kind.RETURNED:
@@ -143,7 +145,14 @@ def describe(event: TicketEvent, names: dict[str, str]) -> str:
                 "to": names.get(data["to"], data["to"]),
                 "reason": data.get("reason", ""),
             }
-        case TicketEvent.Kind.STATUS_CHANGED if data.get("to") == Ticket.Status.DONE:
+        case TicketEvent.Kind.REASSIGNED:
+            if data["from"] == data["to"]:
+                return _("Assignee changed")
+            return _("Reassigned from “%(from)s” to “%(to)s”") % {
+                "from": names.get(data["from"], data["from"]),
+                "to": names.get(data["to"], data["to"]),
+            }
+        case TicketEvent.Kind.STATUS_CHANGED if "department_correct" in data:
             if data.get("department_correct"):
                 return _("Done; the department was right")
             return _("Done; it should have gone to “%(department)s”") % {

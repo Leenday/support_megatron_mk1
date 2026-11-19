@@ -90,20 +90,12 @@ def staff_login(context: BrowserContext, run: Run, user: str) -> Page:
     return page
 
 
-def create_specialist(page: Page, run: Run, username: str, department: str) -> None:
+def create_specialist(page: Page, run: Run, email: str, department: str) -> None:
     page.goto(run.url("/admin/support/user/add/"))
-    page.fill("#id_username", username)
+    page.fill("#id_email", email)
     page.fill("#id_password1", PASSWORD)
     page.fill("#id_password2", PASSWORD)
-    if page.locator("#id_department").count():
-        page.select_option("#id_department", value=department)
-    page.click("input[name=_save]")
-    expect(page.locator("#id_groups_from, #id_groups")).to_have_count(1)
-    if page.locator("#id_groups_from").count():  # the two-list widget of the user admin
-        page.select_option("#id_groups_from", label="Specialist")
-        page.click("#id_groups_add_link, #id_groups_add, a.selector-add >> nth=0")
-    else:
-        page.select_option("#id_groups", label="Specialist")
+    page.select_option("#id_role", label="Специалист")
     page.select_option("#id_department", value=department)
     page.click("input[name=_save]")
     expect(page.locator(".messagelist .success")).to_be_visible()
@@ -129,8 +121,9 @@ def send_request(context: BrowserContext, run: Run, text: str) -> tuple[Page, in
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     parser.add_argument("--base", default="http://localhost:8000")
-    parser.add_argument("--admin", default="boss", help="a superuser of the service")
-    parser.add_argument("--password", required=True, help="the superuser's password")
+    parser.add_argument("--admin", default="boss@example.com", help="the admin account's email")
+    parser.add_argument("--password", required=True, help="the admin account's password")
+    parser.add_argument("--browser", choices=("chrome", "chromium"), default="chrome")
     parser.add_argument("--out", type=Path, default=Path("out/acceptance"))
     args = parser.parse_args()
     args.out.mkdir(parents=True, exist_ok=True)
@@ -138,22 +131,25 @@ def main() -> int:
         old.unlink()
     run = Run(args.base, args.out)
     suffix = time.strftime("%H%M%S")
-    ivan, petr, new_department = f"ivan{suffix}", f"petr{suffix}", f"e2e{suffix}"
+    ivan, petr = f"ivan{suffix}@example.com", f"petr{suffix}@example.com"
+    new_department = f"e2e{suffix}"
     state: dict = {}
 
     with sync_playwright() as p:
-        browser = p.chromium.launch(channel="chrome", headless=True)
+        browser = p.chromium.launch(channel="chrome" if args.browser == "chrome" else None)
         boss = admin_login(browser.new_context(**RU), run, args.admin, args.password)
 
         # --- Admin: configure the system (22–26) ---------------------------------------
         def story_22():
             create_specialist(boss, run, ivan, "network")
             create_specialist(boss, run, petr, "network")
-            staff_login(browser.new_context(**RU), run, ivan).close()
+            specialist = staff_login(browser.new_context(**RU), run, ivan)
+            specialist.goto(run.url("/admin/"))
+            expect(specialist).to_have_url(re.compile(r"/admin/login/\?next="))
+            specialist.close()
             boss.goto(run.url("/admin/support/user/"))
             run.shot(boss, "admin-users")
-            # Deleting is possible in the plain admin; #16 replaces it with deactivation.
-            return "two specialists created in the admin with role and department; they log in"
+            return "specialists sign in to their desk and cannot access the admin panel"
 
         run.story("22", "Users with a role and a department", story_22)
 
@@ -205,12 +201,12 @@ def main() -> int:
 
         def story_26():
             boss.goto(run.url("/admin/support/routingsettings/"))
-            boss.locator("#result_list tbody a").first.click()
+            expect(boss).to_have_url(run.url("/admin/support/routingsettings/1/change/"))
             original = boss.input_value("#id_w_load")
             boss.fill("#id_w_load", "0.4")
             boss.click("input[name=_save]")
             expect(boss.locator(".messagelist .success")).to_be_visible()
-            boss.locator("#result_list tbody a").first.click()
+            boss.goto(run.url("/admin/support/routingsettings/"))
             assert boss.input_value("#id_w_load") == "0.4"
             boss.fill("#id_w_load", original)
             boss.click("input[name=_save]")
@@ -403,38 +399,42 @@ def main() -> int:
         def story_27():
             boss.goto(run.url("/admin/support/ticket/"))
             run.shot(boss, "admin-tickets")
-            headers = " ".join(boss.locator("#result_list thead th").all_inner_texts()).lower()
-            if "status" in headers and "assignee" in headers:
-                return "the ticket list has status and assignee columns"
-            return ("partial", "all tickets listed, without status and assignee columns (#16)")
+            expect(boss.locator("#result_list thead .column-status")).to_be_visible()
+            expect(boss.locator("#result_list thead .column-assignee")).to_be_visible()
+            return "the ticket list has status and assignee columns"
 
         run.story("27", "All tickets with status and assignee", story_27)
 
         def story_28():
-            boss.goto(run.url(f"/admin/support/ticket/{state['wifi']}/change/"))
-            boss.select_option("#id_department", value="software")
+            url = run.url(f"/admin/support/ticket/{state['wifi']}/change/")
+            boss.goto(url)
+            source = boss.input_value("#id_department")
+            target = "software" if source != "software" else "network"
+            boss.select_option("#id_department", value=target)
             boss.click("input[name=_save]")
             expect(boss.locator(".messagelist .success")).to_be_visible()
-            events = boss.request.get(run.url(f"/api/tickets/{state['wifi']}")).json()
-            assert events["department"] == "software", events
-            return (
-                "partial",
-                "any ticket can be edited and reassigned, but the change is not recorded as an "
-                "event (#16)",
-            )
+            ticket = boss.request.get(run.url(f"/api/tickets/{state['wifi']}")).json()
+            assert ticket["department"] == target, ticket
+            boss.goto(url)
+            history = boss.locator(".field-history")
+            expect(history.get_by_text("Переназначена", exact=True)).to_be_visible()
+            expect(history).to_contain_text(f'"from": "{source}"')
+            expect(history).to_contain_text(f'"to": "{target}"')
+            return f"reassigned from {source} to {target}; both departments appear in the history"
 
         run.story("28", "Edit or reassign any ticket", story_28)
 
         def story_29():
             boss.goto(run.url("/admin/support/department/"))
-            headers = " ".join(boss.locator("#result_list thead th").all_inner_texts()).lower()
-            run.shot(boss, "admin-department-list")
-            if "open" in headers:
-                return "open tickets per department in the admin"
-            return (
-                "partial",
-                "open tickets per department are in /api/departments, not yet in the admin (#16)",
+            expect(boss.locator("#result_list thead .column-open_tickets")).to_be_visible()
+            departments = boss.request.get(run.url("/api/departments")).json()
+            network = next(row for row in departments if row["id"] == "network")
+            row = boss.locator("#result_list tbody tr").filter(
+                has=boss.get_by_role("link", name="network", exact=True)
             )
+            expect(row.locator(".field-open_tickets")).to_have_text(str(network["open_tickets"]))
+            run.shot(boss, "admin-department-list")
+            return "the admin's open ticket count matches the API"
 
         run.story("29", "Open tickets per department", story_29)
 

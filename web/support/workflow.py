@@ -70,7 +70,11 @@ def next_department(ticket: Ticket) -> str | None:
     bounced between two departments. None when even the fallback has had it.
     """
     tried = {ticket.department_id} | {
-        e.data.get("from") for e in ticket.events.filter(kind=TicketEvent.Kind.RETURNED)
+        e.data.get("from")
+        for e in ticket.events.filter(
+            kind__in=(TicketEvent.Kind.RETURNED, TicketEvent.Kind.REASSIGNED)
+        )
+        if e.data.get("from") != e.data.get("to")
     }
     active = set(Department.objects.filter(active=True).values_list("id", flat=True))
     for candidate in ticket.candidates:
@@ -135,8 +139,67 @@ def close(ticket_id: int, user: User, correct_department: str | None = None) -> 
         data={
             "from": Ticket.Status.IN_PROGRESS.value,
             "to": Ticket.Status.DONE.value,
+            "department": ticket.department_id,
             "department_correct": correct_department is None,
             "correct_department": correct_department,
         },
     )
+    return ticket
+
+
+@transaction.atomic
+def admin_edit(ticket_id: int, user: User, values: dict) -> Ticket:
+    """Apply the submitted fields to the current row and record the changes."""
+    ticket = locked(ticket_id)
+    if (
+        values.get("department_id", ticket.department_id) != ticket.department_id
+        and ticket.status in Ticket.OPEN
+        and "assignee_id" not in values
+    ):
+        values["assignee_id"] = None
+    if ticket.status in Ticket.OPEN and "assignee_id" in values:
+        values.setdefault(
+            "status", Ticket.Status.IN_PROGRESS if values["assignee_id"] else Ticket.Status.NEW
+        )
+    changes = {
+        field: [getattr(ticket, field), value]
+        for field, value in values.items()
+        if getattr(ticket, field) != value
+    }
+    if not changes:
+        return ticket
+
+    updated_fields = list(changes)
+    for field, (_old, new) in changes.items():
+        setattr(ticket, field, new)
+    if "department_id" in changes or "assignee_id" in changes:
+        source, destination = changes.pop("department_id", [ticket.department_id] * 2)
+        assignment = changes.pop("assignee_id", [ticket.assignee_id] * 2)
+        TicketEvent.objects.create(
+            ticket=ticket,
+            kind=TicketEvent.Kind.REASSIGNED,
+            actor=user,
+            data={"from": source, "to": destination, "assignee": assignment},
+        )
+    if "status" in changes:
+        source, destination = changes.pop("status")
+        ticket.closed_at = timezone.now() if destination == Ticket.Status.DONE else None
+        if destination == Ticket.Status.IN_PROGRESS:
+            ticket.taken_at = timezone.now()
+        elif destination == Ticket.Status.NEW:
+            ticket.taken_at = None
+        TicketEvent.objects.create(
+            ticket=ticket,
+            kind=TicketEvent.Kind.STATUS_CHANGED,
+            actor=user,
+            data={"from": source, "to": destination, "department": ticket.department_id},
+        )
+    if changes:
+        TicketEvent.objects.create(
+            ticket=ticket,
+            kind=TicketEvent.Kind.EDITED,
+            actor=user,
+            data=changes,
+        )
+    ticket.save(update_fields=[*updated_fields, "taken_at", "closed_at"])
     return ticket
