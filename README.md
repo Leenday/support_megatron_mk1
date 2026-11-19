@@ -166,7 +166,7 @@ gantt
     Rule-based check and extraction of identifiers and dates [35] :done, t35, 2026-11-19, 2026-11-21
     Service done :milestone, m2, 2026-11-13, 0d
     section 3 · Validation
-    Django admin users, roles, departments, all tickets [16] :t16, 2026-11-14, 2026-11-18
+    Django admin users, roles, departments, all tickets [16] :done, t16, 2026-11-14, 2026-11-18
     Translation RU ↔ EN (if time allows) [23] :t23, 2026-11-21, 2026-11-26
     Iteration 2 testing [19] :done, t19, 2026-11-18, 2026-11-20
     Measure triage time manual vs automatic [43] :done, t43, 2026-11-14, 2026-11-21
@@ -201,7 +201,7 @@ gantt
 | [#28](https://github.com/Leenday/support_megatron_mk1/issues/28) | Quality gates: type checking, dependency check, PR title check | 2026-10-28 | 2026-10-30 | Denis | ✅ |
 | [#31](https://github.com/Leenday/support_megatron_mk1/issues/31) | Generalize for other domains and datasets | 2026-10-29 | 2026-11-01 | Denis | ✅ |
 | [#15](https://github.com/Leenday/support_megatron_mk1/issues/15) | Django project, data models, roles and load-aware routing | 2026-11-07 | 2026-11-11 | Denis | ✅ |
-| [#16](https://github.com/Leenday/support_megatron_mk1/issues/16) | Django admin: users, roles, departments, all tickets | 2026-11-14 | 2026-11-18 | Roman |  |
+| [#16](https://github.com/Leenday/support_megatron_mk1/issues/16) | Django admin: users, roles, departments, all tickets | 2026-11-14 | 2026-11-18 | Roman | ✅ |
 | [#17](https://github.com/Leenday/support_megatron_mk1/issues/17) | Open request form and status by link | 2026-11-12 | 2026-11-16 | Denis | ✅ |
 | [#18](https://github.com/Leenday/support_megatron_mk1/issues/18) | Specialist dashboard: take tickets and change statuses | 2026-11-16 | 2026-11-24 | Denis | ✅ |
 | [#23](https://github.com/Leenday/support_megatron_mk1/issues/23) | Translation RU <-> EN (if time allows) | 2026-11-21 | 2026-11-26 | Denis |  |
