@@ -119,6 +119,8 @@ Prompt tuning uses only the dev part, so the test numbers stay honest: `--part d
 
 **Triage time (#43).** `megatron-triage` measures the business goal's part the system changes: a person triages half of 30 requests by hand (department, who / where / when / what) and checks the service's tickets for the other half, on a local page that times each request; `report` gives the median times, the reduction with a bootstrap range and the departments' accuracy. Method, limits and results: [docs/triage-time.md](docs/triage-time.md).
 
+**Splitting a request across departments (#45).** A design note, not implemented: the model would number the request's sentences into parts, each part would become its own ticket of the same request, and a specialist would see the other parts masked. It covers the options, the chosen approach, an effort estimate and a measurement plan on 15 synthetic multi-topic requests ([data/split_requests.jsonl](data/split_requests.jsonl)): [docs/split-request.md](docs/split-request.md).
+
 **Routing.** The model lists 1–3 candidate departments, best fit first. Each candidate gets `score = w_match · match + w_load · (1 − load)`, where `match` is 1.0 / 0.6 / 0.3 by rank (`routing` in the config), and the ticket goes to the highest score. Only candidates are scored, so a department the model did not list never gets the ticket, and the fallback department counts only as the best fit; without load the best fit wins, with load a nearly full best fit can lose to a free second candidate.
 
 **Model backend.** `LLM_BACKEND` in `.env` picks the model: `ollama` (default, local), `openai` (`OPENAI_API_KEY`, `OPENAI_MODEL`, default `gpt-5.4-mini`; `OPENAI_BASE_URL` for any OpenAI-compatible API such as OpenRouter or vLLM) or `fake` (no model: departments by keyword match with their tags and names, for developing the service without a key). With `openai`, add `--no-deps` in Docker: `docker compose run --rm --no-deps megatron "текст"`. For one run, `--backend` and `--model` override `.env` in `megatron` and `megatron-eval`: `megatron --backend openai --model gpt-5.4-nano "текст"`; the first line of the output names the model in use (`model: gpt-5.4-nano at https://api.openai.com/v1`). In Docker a new Ollama model is downloaded only when it is set with `OLLAMA_MODEL` (`OLLAMA_MODEL=qwen3:4b docker compose run --rm megatron "текст"`), since the download runs before the CLI starts. One request takes 1–2 s instead of tens of seconds.
@@ -171,7 +173,7 @@ gantt
     Iteration 2 testing [19] :done, t19, 2026-11-18, 2026-11-20
     Measure triage time manual vs automatic [43] :done, t43, 2026-11-14, 2026-11-21
     Local models on a GPU qwen3 4b / 8b [44] :t44, 2026-11-17, 2026-11-21
-    Design note split a request across departments [45] :t45, 2026-11-20, 2026-11-22
+    Design note split a request across departments [45] :done, t45, 2026-11-20, 2026-11-22
     Systems vocabulary from specialists' answers, approved by a Validator [57] :t57, 2026-11-14, 2026-11-20
     Validation done :milestone, m3, 2026-11-27, 0d
     section 4 · Final
@@ -212,7 +214,7 @@ gantt
 | [#42](https://github.com/Leenday/support_megatron_mk1/issues/42) | JSON API with OpenAPI (Swagger) docs | 2026-11-10 | 2026-11-13 | Denis | ✅ |
 | [#43](https://github.com/Leenday/support_megatron_mk1/issues/43) | Measure triage time: manual vs automatic | 2026-11-14 | 2026-11-21 | Denis | ✅ |
 | [#44](https://github.com/Leenday/support_megatron_mk1/issues/44) | Local models on a GPU: qwen3:4b / 8b | 2026-11-17 | 2026-11-21 | Denis |  |
-| [#45](https://github.com/Leenday/support_megatron_mk1/issues/45) | Design note: split a request across departments | 2026-11-20 | 2026-11-22 | Denis |  |
+| [#45](https://github.com/Leenday/support_megatron_mk1/issues/45) | Design note: split a request across departments | 2026-11-20 | 2026-11-22 | Denis | ✅ |
 | [#34](https://github.com/Leenday/support_megatron_mk1/issues/34) | Systems vocabulary: a normalised 'system' next to free-text 'where' | 2026-11-21 | 2026-11-25 | Denis | ✅ |
 | [#35](https://github.com/Leenday/support_megatron_mk1/issues/35) | Rule-based check and extraction of identifiers and dates | 2026-11-19 | 2026-11-21 | Denis | ✅ |
 | [#36](https://github.com/Leenday/support_megatron_mk1/issues/36) | Fact-check ticket claims against the request (if time allows) | 2026-11-28 | 2026-12-03 | Denis |  |
