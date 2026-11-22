@@ -174,7 +174,7 @@ gantt
     Measure triage time manual vs automatic [43] :done, t43, 2026-11-14, 2026-11-21
     Local models on a GPU qwen3 4b / 8b [44] :t44, 2026-11-17, 2026-11-21
     Design note split a request across departments [45] :done, t45, 2026-11-20, 2026-11-22
-    Systems vocabulary from specialists' answers, approved by a Validator [57] :t57, 2026-11-14, 2026-11-20
+    Systems vocabulary from specialists' answers, approved by a Validator [57] :done, t57, 2026-11-14, 2026-11-20
     Validation done :milestone, m3, 2026-11-27, 0d
     section 4 · Final
     Voice input with Whisper (optional) [20] :t20, 2026-12-01, 2026-12-05
@@ -218,7 +218,7 @@ gantt
 | [#34](https://github.com/Leenday/support_megatron_mk1/issues/34) | Systems vocabulary: a normalised 'system' next to free-text 'where' | 2026-11-21 | 2026-11-25 | Denis | ✅ |
 | [#35](https://github.com/Leenday/support_megatron_mk1/issues/35) | Rule-based check and extraction of identifiers and dates | 2026-11-19 | 2026-11-21 | Denis | ✅ |
 | [#36](https://github.com/Leenday/support_megatron_mk1/issues/36) | Fact-check ticket claims against the request (if time allows) | 2026-11-28 | 2026-12-03 | Denis |  |
-| [#57](https://github.com/Leenday/support_megatron_mk1/issues/57) | Systems vocabulary from specialists' answers, approved by a Validator | 2026-11-14 | 2026-11-20 | Denis |  |
+| [#57](https://github.com/Leenday/support_megatron_mk1/issues/57) | Systems vocabulary from specialists' answers, approved by a Validator | 2026-11-14 | 2026-11-20 | Denis | ✅ |
 
 ## Stages
 
