@@ -137,6 +137,20 @@ On dev: v4 0.20, with examples 0.30, logistic regression 0.47.
 | test, 110 | 30 % | 0.67 | 10 % (always route: 65 %) |
 
 One run on small sets: a direction, not a proven number. It suggests the measures to report for routing: the share routed automatically, the accuracy of those, the share of wrong routes, and in operation the reassignment rate (returns and "Was the department right? No"), with under 5 % as a practitioners' target ([Supportbench](https://www.supportbench.com/prevent-ticket-bouncing-between-teams/)).
+## An exit token for the department (#73)
+
+Session 08 recommends an exact refusal token. The prompt already lets the model answer the fallback department alone when a request is unclear, and the fallback is where a person triages (the general helpdesk in RU, the product line in `buckets`). The model almost never used it: 1 of 110 EN test requests while 65 % were wrong, 0 of 69 RU. A variant that says to use the fallback also when two departments fit about equally, because a wrong department costs more than a triage, was tried on dev (gpt-5.4-mini, as v6). "Routed" means answered with a department other than the fallback; a wrong route is a routed request with the wrong department, as a share of all requests.
+
+| Dev | Prompt | Accuracy | Routed | Accuracy of routed | Wrong routes |
+|---|---|---|---|---|---|
+| EN, 40 | v4 | 0.20 | 0.97 | 0.21 | 0.78 |
+| EN, 40 | v6, exit | 0.23 | 0.93 | 0.22 | 0.72 |
+| RU, 30 | v4 | 0.87 | 0.23 | 0.86 | 0.03 |
+| RU, 30 | v6, exit | 0.87 | 0.23 | 0.86 | 0.03 |
+| `buckets`, 45 | v4 | 0.91 | 0.47 | 0.86 | 0.07 |
+| `buckets`, 45 | v6, exit | 0.89 | 0.44 | 0.85 | 0.07 |
+
+**Rejected: the prompt stays v4.** The model does not see its own mistakes: it stays confident where it is wrong, as the literature found for prompted LLMs' confidence ([Gupta, arXiv 2610.31657](https://arxiv.org/abs/2610.31657)). Abstaining needs a second, independent opinion: a classifier trained on the confirmed history (see above, and #73).
 
 ## Choice of model
 

@@ -30,6 +30,10 @@ You turn a support request into a ticket.
 """
 
 
+# An exit wording ("use the fallback alone when two departments fit about equally: a wrong
+# department costs more than a triage", tried as v6 on dev, 23.11, #73) left the answers almost
+# as they were: EN wrong routes 78 % -> 72 % (2 of 40), RU unchanged, buckets one worse. The
+# model does not see its own mistakes, so abstaining needs a second, independent opinion.
 # A stricter variant ("not a guessed cause, the topic, the industry ...", tried as v5 on dev,
 # 12.11) changed nothing beyond run-to-run noise, so the simpler wording stays.
 SYSTEMS_INSTRUCTION = """\
