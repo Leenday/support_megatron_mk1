@@ -23,6 +23,8 @@ from megatron.classifier import DepartmentClassifier
 from megatron.departments import Department as DepartmentConfig
 from megatron.departments import DepartmentsConfig, RoutingWeights, load_departments
 from megatron.departments import System as SystemConfig
+from megatron.examples import ExampleIndex
+from megatron.inputs import Request as SolvedRequest
 from megatron.inputs import load_requests
 from megatron.llm import BackendError, ExtractionError, Extractor, build_extractor
 from megatron.prompt import PROMPT_VERSION
@@ -158,28 +160,39 @@ def confirmed_history() -> list[tuple[str, str]]:
     return [*imported, *closed]
 
 
-# The classifier is retrained only when the history changed by a tenth (at least 20 tickets):
-# training on thousands of tickets takes seconds, a request must not wait for it each time.
-_classifier: DepartmentClassifier | None = None
+class HistoryModels(BaseModel, arbitrary_types_allowed=True):
+    """What the service learns from the confirmed history: a classifier that checks the
+    model (#73) and the similar solved tickets shown to the model as examples (#67)."""
+
+    classifier: DepartmentClassifier
+    examples: ExampleIndex
 
 
-def history_classifier() -> DepartmentClassifier | None:
-    """The classifier on the confirmed history, or None while the history is too small (or
-    abstaining is off): then the service routes as before, by the model alone."""
-    global _classifier
+EXAMPLES = 5  # solved tickets shown before a request (#67: 5 helped on the EN test)
+
+# Rebuilt only when the history changed by a tenth (at least 20 tickets): training on
+# thousands of tickets takes seconds, a request must not wait for it each time.
+_trained: HistoryModels | None = None
+
+
+def history_models() -> HistoryModels | None:
+    """The models of the confirmed history, or None while it is too small (or abstaining is
+    off): then the service routes as before, by the model with its descriptions alone."""
+    global _trained
     minimum = RoutingSettings.load().abstain_min_history
     history = confirmed_history() if minimum else []
     if not minimum or len(history) < minimum:
         return None
-    if _classifier is None or abs(len(history) - _classifier.size) >= max(
-        20, _classifier.size // 10
-    ):
+    size = _trained.classifier.size if _trained else 0
+    if _trained is None or abs(len(history) - size) >= max(20, size // 10):
         texts, departments = zip(*history, strict=True)
         try:
-            _classifier = DepartmentClassifier(texts, departments)
+            classifier = DepartmentClassifier(texts, departments)
         except ValueError:  # one department only: nothing to tell apart
             return None
-    return _classifier
+        index = ExampleIndex([SolvedRequest(text=t, expected=d) for t, d in history])
+        _trained = HistoryModels(classifier=classifier, examples=index)
+    return _trained
 
 
 class RoutingMeasures(BaseModel):
@@ -276,11 +289,13 @@ def extract(text: str, extractor_factory: ExtractorFactory | None = None) -> Ext
     """
     config = departments_config()
     extractor = (extractor_factory or default_extractor)(config)
+    if trained := history_models():
+        extractor.use_examples(trained.examples, EXAMPLES)
     start = time.perf_counter()
     extraction = extractor.extract_detailed(text)
     return ExtractResult(
         model=extractor.model,
-        prompt_version=PROMPT_VERSION,
+        prompt_version=extractor.prompt_version,
         ticket=route(extraction.ticket, config),
         attempts=extraction.attempts,
         dropped_identifiers=extraction.dropped_identifiers,
@@ -328,10 +343,15 @@ def create_ticket(
         vocabulary_version=vocabulary_version(),
     )
     start = time.perf_counter()
+    trained = None
     try:
         # Looked up at call time, so tests can replace `default_extractor` for the views too.
         extractor = (extractor_factory or default_extractor)(config)
+        trained = history_models()
+        if trained:
+            extractor.use_examples(trained.examples, EXAMPLES)
         request.model = extractor.model
+        request.prompt_version = extractor.prompt_version
         extraction = extractor.extract_detailed(text)
     except (ExtractionError, BackendError) as e:
         logger.warning("request not turned into a ticket: %s", e)
@@ -348,9 +368,8 @@ def create_ticket(
     # Abstain (#73): with a confirmed history, a classifier checks the model's best fit; when
     # they disagree, a person triages the ticket in the fallback department.
     check = None
-    classifier = history_classifier()
-    if classifier:
-        suggested, probability = classifier.predict(text)
+    if trained:
+        suggested, probability = trained.classifier.predict(text)
         best = extraction.ticket.candidates[0]
         check = {
             "history": suggested,
@@ -375,7 +394,8 @@ def create_ticket(
                 "scores": {d: round(s, 3) for d, s in scores.items()},
                 "load": {d: config.get(d).load for d in scores},
             }
-            | ({"check": check} if check else {}),
+            | ({"check": check} if check else {})
+            | ({"examples": extraction.examples} if extraction.examples else {}),
         )
     return request
 

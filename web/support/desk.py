@@ -228,6 +228,15 @@ def show_ticket(request: HttpRequest, ticket: Ticket, **forms) -> HttpResponse:
         "close_form": forms.get("close_form") or close_form(ticket),
         "ask_system": bool(ticket.where) and not ticket.systems,
         "triage": triage(ticket, names),
+        "examples": [
+            (text, names.get(department, department))
+            for text, department in (
+                ticket.events.filter(kind=TicketEvent.Kind.CREATED)
+                .values_list("data__examples", flat=True)
+                .first()
+                or []
+            )
+        ],
     }
     return render(request, "support/desk_ticket.html", context, status=400 if forms else 200)
 

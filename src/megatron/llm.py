@@ -24,6 +24,7 @@ from megatron.prompt import (
     EXAMPLES_INSTRUCTION,
     EXAMPLES_SUFFIX,
     PROMPT_VERSION,
+    REQUEST_MARK,
     build_system_prompt,
     build_user_message,
 )
@@ -61,6 +62,10 @@ class Extraction(BaseModel):
         description="identifiers the model gave that are not in the request text or do not "
         "look like identifiers (plain words)"
     )
+    examples: list[tuple[str, str]] = Field(
+        default=[],
+        description="solved tickets shown as examples: the start of the text, department",
+    )
 
 
 class Extractor(ABC):
@@ -93,9 +98,10 @@ class Extractor(ABC):
         return self.extract_detailed(text).ticket
 
     def extract_detailed(self, text: str) -> Extraction:
+        examples = self.examples.similar(text, self.k) if self.examples else []
         messages = [
             {"role": "system", "content": self.system_prompt},
-            {"role": "user", "content": build_user_message(text, self.render_examples(text))},
+            {"role": "user", "content": build_user_message(text, render_examples(examples))},
         ]
         schema = self.ticket_model.model_json_schema()
         for attempt in range(1, self.max_retries + 2):
@@ -115,13 +121,9 @@ class Extractor(ABC):
                     ticket=keep_fallback_alone(checked, self.fallback),
                     attempts=attempt,
                     dropped_identifiers=dropped,
+                    examples=[(e.text[:200], e.expected or "") for e, _ in examples],
                 )
         raise ExtractionError(f"{self.model} returned no valid ticket after {attempt} attempts")
-
-    def render_examples(self, text: str) -> str:
-        if not self.examples:
-            return ""
-        return render_examples(self.examples.similar(text, self.k))
 
 
 class ChatClient(Protocol):
@@ -209,7 +211,8 @@ class FakeExtractor(Extractor):
         self.config = config
 
     def complete(self, messages: Messages, schema: dict[str, Any]) -> str:
-        text = messages[-1]["content"]
+        # Only the request: the examples before it would add their keywords.
+        text = messages[-1]["content"].split(REQUEST_MARK, 1)[-1]
         words = {w[:STEM] for w in re.findall(r"\w+", text.lower())}
         hits: dict[str, list[str]] = {}
         for d in self.config.departments:

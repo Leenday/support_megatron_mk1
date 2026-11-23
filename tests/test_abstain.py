@@ -33,7 +33,7 @@ VPN = [
 @pytest.fixture(autouse=True)
 def departments(departments_path):
     import_departments(load_departments(departments_path))
-    services._classifier = None  # the cache must not leak from another test
+    services._trained = None  # the cache must not leak from another test
     settings = RoutingSettings.load()
     settings.abstain_min_history = 8
     settings.save()
@@ -67,6 +67,8 @@ def test_without_enough_history_the_model_routes_alone():
     ticket = ticket_of("The printer is broken again")
     assert ticket.department_id == "hardware"
     assert check_of(ticket) is None
+    assert "examples" not in ticket.events.get(kind=TicketEvent.Kind.CREATED).data
+    assert not ticket.request.prompt_version.endswith("+examples")
 
 
 def test_agreement_routes_as_before():
@@ -87,6 +89,14 @@ def test_disagreement_sends_the_ticket_to_triage():
     assert ticket.candidates == ["hardware"]  # the model's answer is kept for the triage
     check = check_of(ticket)
     assert (check["history"], check["agree"], check["abstained"]) == ("network", False, True)
+
+
+def test_the_history_gives_the_model_examples_and_the_ticket_lists_them():
+    history()
+    ticket = ticket_of("The printer is broken again")
+    examples = ticket.events.get(kind=TicketEvent.Kind.CREATED).data["examples"]
+    assert len(examples) == 5 and examples[0][1] == "hardware"
+    assert ticket.request.prompt_version.endswith("+examples")
 
 
 def test_abstaining_can_be_switched_off():
@@ -120,7 +130,7 @@ def test_measures_count_triage_wrong_routes_and_returns():
     ivan = make_user("ivan", department="network")
     triaged = ticket_of("The printer is broken again")  # disagreement: to triage
     routed = ticket_of("VPN does not connect from the office")  # disagreement too
-    services._classifier = None
+    services._trained = None
     HistoryTicket.objects.all().delete()
     history()
     agreed = ticket_of("VPN connection drops again")  # agreement: routed to network
@@ -158,6 +168,7 @@ def test_ticket_page_explains_the_triage_and_the_review_page_shows_measures(clie
     text = page.content.decode()
     assert "the history of solved tickets “Network and communications”" in text
     assert "for triage: the model and the history disagreed" in text
+    assert "Similar solved tickets shown to the model" in text
 
     client.force_login(make_user("vera", role="Validator", department=None))
     review = client.get(reverse("desk_review"), headers={"accept-language": "en"}).content.decode()
