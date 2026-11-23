@@ -90,6 +90,54 @@ On 2026-11-11 the evaluation was rerun on configs exported from the service data
 
 On 2026-11-17 one participant triaged 30 RU test requests outside the gold subset: 15 by hand (department, who / where / when / what) and 15 by checking the service's ticket, in alternating blocks of 5, timed on a local page (`megatron-triage`). Median 31.2 s by hand against 9.7 s with the service (8.3 s check + 1.5 s model): **69 % shorter (95 % range 44–79 %)**, goal 30 %. Department right: 73 % by hand, 93 % with the service (ranges overlap). The participant kept every service department, including the one wrong, so checks need the Validator (#57). On 2026-11-23 a second participant, a team member, triaged 30 requests of the harder local `buckets` set (three buckets of another support team; the service right on 23 of 30) with the halves swapped: median 76.1 s by hand against 41.2 s with the service, **46 % shorter (95 % range −3–67 %)**, so not proven on this set; after the first block the gain is near 30 %. Department right: 47 % by hand, 73 % with the service; the person kept both service errors and changed two right departments to wrong ones. Method, checks and limits: [triage-time.md](triage-time.md).
 
+## Department descriptions that say when to choose (#67, step 1)
+
+On 2026-11-23 the EN queue descriptions were rewritten as "choose when … · not when … → X", from the labels of the dataset's 16 230 English tickets outside the test set. For example, 50 % of the questions about prices and plans are billing, and only 3 % of all tickets are sales, while prompt v4 sent 40 % of the dev requests to sales. gpt-5.4-mini, prompt v4, the same program:
+
+| EN | Requests | Accuracy | Macro-F1 | Expected in candidates |
+|---|---|---|---|---|
+| dev: v4 descriptions | 40 | 0.20 (0.10–0.33) | 0.17 (0.07–0.25) | 0.40 |
+| dev: "when to choose" | 40 | 0.23 (0.10–0.35) | 0.23 (0.10–0.32) | 0.30 |
+| test: v4 descriptions | 110 | 0.27 (0.19–0.36) | 0.22 (0.15–0.27) | 0.44 |
+| test: "when to choose" | 110 | 0.22 (0.15–0.29) | 0.18 (0.12–0.23) | 0.30 |
+
+**No gain; the v4 descriptions stay.** The sales bias went (sales answers on test 35 → 1), but the answers moved to the dataset's large queues: technical and product support got 97 of the 110 answers, against 48 % of the pool. The test part is balanced, 11 requests per queue, so the answers that follow the dataset's proportions lose the sales hits and gain little elsewhere, because the text says little about the label. Descriptions alone cannot fix labels that do not follow from the text; step 2 below does better. The run is `out/eval/en/gpt-5.4-mini-v4-when.jsonl`; RU uses its own departments and is not affected.
+
+## Similar solved tickets as examples (#67, step 2)
+
+For each request the 5 most similar solved tickets go before it as data, each with its queue (`megatron-eval --examples`, `src/megatron/examples.py`). The pool is the dataset's 16 229 English tickets outside the test set. The synthetic set has near-duplicates: 65 % of the test requests have a ticket with cosine > 0.8 in the pool, which would hand the model the answer. So every number below leaves those out (`--skip-similar 0.8`). With them the neighbours' vote alone reaches 0.65, a leak, not a result. Retrieval is measured apart from the answer: the right queue is among the 5 neighbours for 0.65 of the test requests (0.70 on dev), which is the ceiling of what the examples can teach.
+
+| EN test, 110 requests | Accuracy | Macro-F1 | Expected in candidates | Paired against v4 (95 % range) |
+|---|---|---|---|---|
+| gpt-5.4-mini, prompt v4 | 0.27 (0.19–0.36) | 0.22 | 0.44 | — |
+| v4 + "when to choose" descriptions (step 1) | 0.22 (0.15–0.29) | 0.18 | 0.30 | −0.055 (−0.127 to +0.018) |
+| **v4 + 5 similar solved tickets** | **0.35 (0.26–0.45)** | **0.32** | **0.55** | **+0.082 (+0.009 to +0.155)** |
+| TF-IDF + logistic regression on the pool, no LLM | 0.40 | 0.40 | — | +0.127 (+0.009 to +0.245) |
+
+On dev: v4 0.20, with examples 0.30, logistic regression 0.47.
+
+- **The examples help**, and the paired comparison shows it: 13 requests gained, 4 lost. The model now sees how this dataset routes, which its descriptions could not tell it (step 1).
+- **The simple baseline is not beaten** (session 06: "did the model earn its complexity?"). Logistic regression trained on the same pool is +0.045 above the examples, a difference the paired test cannot tell from noise (−0.073 to +0.155). It is well calibrated: at a probability ≥ 0.5 it covers 26 % of the test requests with 0.83 accuracy. A hybrid (the classifier when it is confident, else the model) was chosen on dev, and dev picked the classifier for every request, so the hybrid is not claimed: a better threshold seen only on test would be tuning on test.
+- **What it means for the service.** Without a history (a new company) the model with department descriptions is the only option, and on our real RU set it gives 0.93. Once there are a few thousand tickets with a confirmed department, the history is worth more than the descriptions: as examples for the model, or as a classifier next to it. Either way it must be confirmed history, so a specialist's department correction goes to the Validator first (#67).
+- RU is not affected: examples are off unless `--examples` is given, and the prompt without them is v4 unchanged.
+
+## Why the department is low on EN, and what to do instead (#67)
+
+**No agent (step 0).** The task is a fixed pipeline: extract, validate, route. Latency matters (1–2 s per request), and a wrong route is costly, so an agent that plans its own steps adds failure modes without a gain. Retrieval, if used, is one fixed step before the call.
+
+**The EN labels set the ceiling, not the model.** Public work on the same data set stays in the same range with models trained on about 19 000 tickets: fine-tuned BERT 0.53 accuracy against 0.50 for TF-IDF + logistic regression, DeBERTa-v3 0.43, the best reported projects 0.65–0.70. They name the same cause: technical, IT and product support describe overlapping problems, and merging them lifts accuracy to 0.82–0.90 ([im-preshanth/support-ticket-classifier](https://github.com/im-preshanth/support-ticket-classifier), [Hugging Face data set](https://huggingface.co/datasets/Tobi-Bueck/customer-support-tickets)). On real data the department works: RU 0.93, the `buckets` set of another team 0.82 on test, where people triaging by hand chose right 73 % (author, RU) and 47 % (a team member, `buckets`) of the time (#43).
+
+**With a labelled history, a trained classifier beats a prompted LLM**, here and in the literature: fine-tuned small models beat zero-shot GPT-4 / Claude in text classification, more so with more data ([Bucher & Martini 2024](https://arxiv.org/abs/2406.08660)); on 8 classes of IT tickets DistilBERT reaches 0.88 against 0.48 for the best prompted LLM ([Gupta, arXiv 2610.31657](https://arxiv.org/abs/2610.31657)).
+
+**Abstain instead of guessing.** A wrong route costs more than a human triage, so a router should route only when it is confident and send the rest to triage. In the same study a threshold on the classifier's probability cut wrong routes from 15.3 % to 3.5 % and the total cost by 38 %; the LLMs' own confidence was useless for it (correctness AUC 0.5 for one model). Checked on our EN data with saved answers, no new model calls: route only when the model with examples and the logistic regression agree, else to triage.
+
+| EN | Routed automatically | Accuracy of those | Wrong routes of all requests |
+|---|---|---|---|
+| dev, 40 | 30 % | 0.83 | 5 % (always route: 70 %) |
+| test, 110 | 30 % | 0.67 | 10 % (always route: 65 %) |
+
+One run on small sets: a direction, not a proven number. It suggests the measures to report for routing: the share routed automatically, the accuracy of those, the share of wrong routes, and in operation the reassignment rate (returns and "Was the department right? No"), with under 5 % as a practitioners' target ([Supportbench](https://www.supportbench.com/prevent-ticket-bouncing-between-teams/)).
+
 ## Choice of model
 
 **gpt-5.4-mini with prompt v3** is the model for iteration 2.
