@@ -99,6 +99,33 @@ def test_new_system_gets_the_validators_id_and_name(ivan, vera):
     assert systems_of("Jira снова не открывается") == ["tracker"]
 
 
+@pytest.mark.parametrize(
+    ("text", "expected"),
+    [
+        ("Битрикс24", "bitriks24"),
+        ("1С", "system_1s"),
+        ("Личный кабинет", "lichnyy_kabinet"),
+        ("Jira Service Desk", "jira_service_desk"),
+        ("Объём «Щит»", "obem_shchit"),
+        ("«»", "system"),
+    ],
+)
+def test_suggested_system_id_is_valid_for_any_alphabet(text, expected):
+    assert vocabulary.system_id_for(text) == expected
+
+
+def test_cyrillic_system_approved_without_typing_an_id(ivan, vera):
+    ticket = taken(ivan)
+    workflow.close(ticket.pk, ivan, proposal=("Битрикс24", None))
+    proposal = Proposal.objects.get(kind=Proposal.Kind.NEW_SYSTEM)
+    assert vocabulary.vocabulary_groups()[0].suggested_id == "bitriks24"
+
+    system = vocabulary.approve(proposal.pk, vera)
+
+    assert (system.id, system.name) == ("bitriks24", "Битрикс24")
+    assert systems_of("Битрикс24 снова не грузит сделки") == ["bitriks24"]
+
+
 def test_nobody_approves_their_own_proposal(ivan, vera):
     admin = make_user("boss", role="Admin")
     ticket = taken(admin)

@@ -118,6 +118,26 @@ def pending_group(proposal: Proposal) -> list[Proposal]:
     )
 
 
+# Simple Russian transliteration for system ids: slugify drops Cyrillic, so "Битрикс24" would
+# become "24", which is not a valid id (#70).
+CYRILLIC = {
+    "а": "a", "б": "b", "в": "v", "г": "g", "д": "d", "е": "e", "ё": "e", "ж": "zh",
+    "з": "z", "и": "i", "й": "y", "к": "k", "л": "l", "м": "m", "н": "n", "о": "o",
+    "п": "p", "р": "r", "с": "s", "т": "t", "у": "u", "ф": "f", "х": "kh", "ц": "ts",
+    "ч": "ch", "ш": "sh", "щ": "shch", "ъ": "", "ы": "y", "ь": "", "э": "e", "ю": "yu",
+    "я": "ya",
+}  # fmt: skip
+
+
+def system_id_for(text: str) -> str:
+    """A valid system id (`[a-z][a-z0-9_]*`) suggested from how a request writes the system."""
+    latin = "".join(CYRILLIC.get(c, c) for c in text.lower())
+    slug = slugify(latin).replace("-", "_")
+    if not slug:
+        return "system"
+    return slug if slug[0].isalpha() else f"system_{slug}"
+
+
 @dataclass
 class Group:
     """Similar pending vocabulary proposals, shown and decided as one."""
@@ -139,7 +159,7 @@ class Group:
 
     @property
     def suggested_id(self) -> str:
-        return slugify(self.texts[0]).replace("-", "_") or "system"
+        return system_id_for(self.texts[0])
 
 
 def vocabulary_groups() -> list[Group]:
@@ -184,7 +204,7 @@ def apply_vocabulary(proposal: Proposal, reviewer: User | None, system_id: str, 
             system.spellings = [*system.spellings, proposal.text]
             system.save(update_fields=["spellings"])
         return
-    system_id = system_id or slugify(proposal.text).replace("-", "_")
+    system_id = system_id or system_id_for(proposal.text)
     if not re.fullmatch(r"[a-z][a-z0-9_]*", system_id):
         raise ActionRefused(_("The system id must be lowercase Latin letters, digits and _."))
     if System.objects.filter(pk=system_id).exists():
