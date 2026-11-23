@@ -121,6 +121,23 @@ On dev: v4 0.20, with examples 0.30, logistic regression 0.47.
 - **What it means for the service.** Without a history (a new company) the model with department descriptions is the only option, and on our real RU set it gives 0.93. Once there are a few thousand tickets with a confirmed department, the history is worth more than the descriptions: as examples for the model, or as a classifier next to it. Either way it must be confirmed history, so a specialist's department correction goes to the Validator first (#67).
 - RU is not affected: examples are off unless `--examples` is given, and the prompt without them is v4 unchanged.
 
+## Why the department is low on EN, and what to do instead (#67)
+
+**No agent (step 0).** The task is a fixed pipeline: extract, validate, route. Latency matters (1–2 s per request), and a wrong route is costly, so an agent that plans its own steps adds failure modes without a gain. Retrieval, if used, is one fixed step before the call.
+
+**The EN labels set the ceiling, not the model.** Public work on the same data set stays in the same range with models trained on about 19 000 tickets: fine-tuned BERT 0.53 accuracy against 0.50 for TF-IDF + logistic regression, DeBERTa-v3 0.43, the best reported projects 0.65–0.70. They name the same cause: technical, IT and product support describe overlapping problems, and merging them lifts accuracy to 0.82–0.90 ([im-preshanth/support-ticket-classifier](https://github.com/im-preshanth/support-ticket-classifier), [Hugging Face data set](https://huggingface.co/datasets/Tobi-Bueck/customer-support-tickets)). On real data the department works: RU 0.93, the `buckets` set of another team 0.82 on test, where people triaging by hand chose right 73 % (author, RU) and 47 % (a team member, `buckets`) of the time (#43).
+
+**With a labelled history, a trained classifier beats a prompted LLM**, here and in the literature: fine-tuned small models beat zero-shot GPT-4 / Claude in text classification, more so with more data ([Bucher & Martini 2024](https://arxiv.org/abs/2406.08660)); on 8 classes of IT tickets DistilBERT reaches 0.88 against 0.48 for the best prompted LLM ([Gupta, arXiv 2610.31657](https://arxiv.org/abs/2610.31657)).
+
+**Abstain instead of guessing.** A wrong route costs more than a human triage, so a router should route only when it is confident and send the rest to triage. In the same study a threshold on the classifier's probability cut wrong routes from 15.3 % to 3.5 % and the total cost by 38 %; the LLMs' own confidence was useless for it (correctness AUC 0.5 for one model). Checked on our EN data with saved answers, no new model calls: route only when the model with examples and the logistic regression agree, else to triage.
+
+| EN | Routed automatically | Accuracy of those | Wrong routes of all requests |
+|---|---|---|---|
+| dev, 40 | 30 % | 0.83 | 5 % (always route: 70 %) |
+| test, 110 | 30 % | 0.67 | 10 % (always route: 65 %) |
+
+One run on small sets: a direction, not a proven number. It suggests the measures to report for routing: the share routed automatically, the accuracy of those, the share of wrong routes, and in operation the reassignment rate (returns and "Was the department right? No"), with under 5 % as a practitioners' target ([Supportbench](https://www.supportbench.com/prevent-ticket-bouncing-between-teams/)).
+
 ## Choice of model
 
 **gpt-5.4-mini with prompt v3** is the model for iteration 2.
