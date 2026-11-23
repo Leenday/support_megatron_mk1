@@ -32,6 +32,7 @@ from megatron.evaluation import (
     unmatched_where,
     with_rules,
 )
+from megatron.examples import ExampleIndex, hit_at_k
 from megatron.inputs import Request, load_requests
 from megatron.llm import (
     BackendError,
@@ -40,7 +41,6 @@ from megatron.llm import (
     add_llm_arguments,
     build_extractor,
 )
-from megatron.prompt import PROMPT_VERSION
 from megatron.routing import route
 from megatron.settings import Settings
 from megatron.systems import find_systems
@@ -91,6 +91,19 @@ def build_parser() -> argparse.ArgumentParser:
         help="fill `systems` of the gold tickets not yet checked from the spellings of the "
         "vocabulary in DEPARTMENTS_PATH, then stop; review them and set systems_checked (#34)",
     )
+    parser.add_argument(
+        "--examples",
+        type=Path,
+        help="solved tickets (.jsonl with text and expected): with --run, the k most similar "
+        "go before each request as examples (#67); the retrieval hit@k is reported either way",
+    )
+    parser.add_argument("--k", type=int, default=5, help="examples per request (5)")
+    parser.add_argument(
+        "--skip-similar",
+        type=float,
+        help="leave out examples more similar than this cosine, such as near-duplicates of the "
+        "request in a synthetic set (e.g. 0.8)",
+    )
     parser.add_argument("--rounds", type=int, default=1000, help="bootstrap resamples (1000)")
     parser.add_argument("--seed", type=int, default=0)
     return parser
@@ -110,7 +123,7 @@ def run_backend(
             request=request.text,
             expected=request.expected,
             model=extractor.model,
-            prompt=PROMPT_VERSION,
+            prompt=extractor.prompt_version,
         )
         start = time.perf_counter()
         try:
@@ -188,6 +201,14 @@ def main(argv: list[str] | None = None) -> int:
         print(f"{gold_path}: systems drafted for {todo} tickets; check them, set systems_checked")
         return 0
 
+    index = None
+    if args.examples:
+        index = ExampleIndex(load_requests(args.examples), skip_above=args.skip_similar)
+        print(
+            f"examples: {len(index.solved)} solved tickets; retrieval hit@{args.k} = "
+            f"{hit_at_k(index, test, args.k):.2f} on {len(test)} requests"
+        )
+
     if args.run:
         settings = Settings().with_llm(args.backend, args.model)
         config = load_departments(settings.departments_path)
@@ -200,6 +221,8 @@ def main(argv: list[str] | None = None) -> int:
         except BackendError as e:
             print(f"error: {e}", file=sys.stderr)
             return 1
+        if index:
+            extractor.use_examples(index, args.k)
         path = out / f"{args.name or model_slug(extractor.model)}.jsonl"
         if not run_backend(extractor, config, test[: args.limit], path):
             return 1

@@ -19,7 +19,14 @@ import openai
 from pydantic import BaseModel, Field, ValidationError
 
 from megatron.departments import DepartmentsConfig
-from megatron.prompt import build_system_prompt
+from megatron.examples import ExampleIndex, render_examples
+from megatron.prompt import (
+    EXAMPLES_INSTRUCTION,
+    EXAMPLES_SUFFIX,
+    PROMPT_VERSION,
+    build_system_prompt,
+    build_user_message,
+)
 from megatron.rules import apply_rules
 from megatron.settings import Settings
 from megatron.systems import find_systems
@@ -66,6 +73,17 @@ class Extractor(ABC):
         self.model = model
         self.endpoint = endpoint
         self.max_retries = max_retries
+        self.examples: ExampleIndex | None = None
+        self.k = 0
+
+    def use_examples(self, index: ExampleIndex, k: int = 5) -> None:
+        """Show the k most similar solved tickets before each request (#67, step 2)."""
+        self.examples, self.k = index, k
+        self.system_prompt += EXAMPLES_INSTRUCTION
+
+    @property
+    def prompt_version(self) -> str:
+        return PROMPT_VERSION + (EXAMPLES_SUFFIX if self.examples else "")
 
     @abstractmethod
     def complete(self, messages: Messages, schema: dict[str, Any]) -> str:
@@ -77,7 +95,7 @@ class Extractor(ABC):
     def extract_detailed(self, text: str) -> Extraction:
         messages = [
             {"role": "system", "content": self.system_prompt},
-            {"role": "user", "content": text},
+            {"role": "user", "content": build_user_message(text, self.render_examples(text))},
         ]
         schema = self.ticket_model.model_json_schema()
         for attempt in range(1, self.max_retries + 2):
@@ -99,6 +117,11 @@ class Extractor(ABC):
                     dropped_identifiers=dropped,
                 )
         raise ExtractionError(f"{self.model} returned no valid ticket after {attempt} attempts")
+
+    def render_examples(self, text: str) -> str:
+        if not self.examples:
+            return ""
+        return render_examples(self.examples.similar(text, self.k))
 
 
 class ChatClient(Protocol):

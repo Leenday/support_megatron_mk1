@@ -101,7 +101,25 @@ On 2026-11-23 the EN queue descriptions were rewritten as "choose when … · no
 | test: v4 descriptions | 110 | 0.27 (0.19–0.36) | 0.22 (0.15–0.27) | 0.44 |
 | test: "when to choose" | 110 | 0.22 (0.15–0.29) | 0.18 (0.12–0.23) | 0.30 |
 
-**No gain; the v4 descriptions stay.** The sales bias went (sales answers on test 35 → 1), but the answers moved to the dataset's large queues: technical and product support got 97 of the 110 answers, against 48 % of the pool. The test part is balanced, 11 requests per queue, so the answers that follow the dataset's proportions lose the sales hits and gain little elsewhere, because the text says little about the label. Descriptions alone cannot fix labels that do not follow from the text; step 2 (similar confirmed tickets as examples) is the remaining lever. The run is `out/eval/en/gpt-5.4-mini-v4-when.jsonl`; RU uses its own departments and is not affected.
+**No gain; the v4 descriptions stay.** The sales bias went (sales answers on test 35 → 1), but the answers moved to the dataset's large queues: technical and product support got 97 of the 110 answers, against 48 % of the pool. The test part is balanced, 11 requests per queue, so the answers that follow the dataset's proportions lose the sales hits and gain little elsewhere, because the text says little about the label. Descriptions alone cannot fix labels that do not follow from the text; step 2 below does better. The run is `out/eval/en/gpt-5.4-mini-v4-when.jsonl`; RU uses its own departments and is not affected.
+
+## Similar solved tickets as examples (#67, step 2)
+
+For each request the 5 most similar solved tickets go before it as data, each with its queue (`megatron-eval --examples`, `src/megatron/examples.py`). The pool is the dataset's 16 229 English tickets outside the test set. The synthetic set has near-duplicates: 65 % of the test requests have a ticket with cosine > 0.8 in the pool, which would hand the model the answer. So every number below leaves those out (`--skip-similar 0.8`). With them the neighbours' vote alone reaches 0.65, a leak, not a result. Retrieval is measured apart from the answer: the right queue is among the 5 neighbours for 0.65 of the test requests (0.70 on dev), which is the ceiling of what the examples can teach.
+
+| EN test, 110 requests | Accuracy | Macro-F1 | Expected in candidates | Paired against v4 (95 % range) |
+|---|---|---|---|---|
+| gpt-5.4-mini, prompt v4 | 0.27 (0.19–0.36) | 0.22 | 0.44 | — |
+| v4 + "when to choose" descriptions (step 1) | 0.22 (0.15–0.29) | 0.18 | 0.30 | −0.055 (−0.127 to +0.018) |
+| **v4 + 5 similar solved tickets** | **0.35 (0.26–0.45)** | **0.32** | **0.55** | **+0.082 (+0.009 to +0.155)** |
+| TF-IDF + logistic regression on the pool, no LLM | 0.40 | 0.40 | — | +0.127 (+0.009 to +0.245) |
+
+On dev: v4 0.20, with examples 0.30, logistic regression 0.47.
+
+- **The examples help**, and the paired comparison shows it: 13 requests gained, 4 lost. The model now sees how this dataset routes, which its descriptions could not tell it (step 1).
+- **The simple baseline is not beaten** (session 06: "did the model earn its complexity?"). Logistic regression trained on the same pool is +0.045 above the examples, a difference the paired test cannot tell from noise (−0.073 to +0.155). It is well calibrated: at a probability ≥ 0.5 it covers 26 % of the test requests with 0.83 accuracy. A hybrid (the classifier when it is confident, else the model) was chosen on dev, and dev picked the classifier for every request, so the hybrid is not claimed: a better threshold seen only on test would be tuning on test.
+- **What it means for the service.** Without a history (a new company) the model with department descriptions is the only option, and on our real RU set it gives 0.93. Once there are a few thousand tickets with a confirmed department, the history is worth more than the descriptions: as examples for the model, or as a classifier next to it. Either way it must be confirmed history, so a specialist's department correction goes to the Validator first (#67).
+- RU is not affected: examples are off unless `--examples` is given, and the prompt without them is v4 unchanged.
 
 ## Choice of model
 

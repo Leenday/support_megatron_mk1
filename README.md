@@ -115,6 +115,8 @@ uv run megatron-eval data/local/ru --rules        # + rows with the rules applie
 
 The models × metrics table of iteration 1, the choice of model and the target values: [docs/results.md](docs/results.md).
 
+**Examples (#67).** `--examples pool.jsonl` (solved tickets with `text` and `expected`) puts the k most similar ones (`--k`, default 5; TF-IDF over character n-grams) before each request as data, and reports the retrieval hit@k, the share of requests whose right department is among the neighbours. `--skip-similar 0.8` leaves out near-duplicates of the request, which a synthetic set has. A run with examples records the prompt as `v4+examples`. Results: [docs/results.md](docs/results.md).
+
 Prompt tuning uses only the dev part, so the test numbers stay honest: `--part dev` scores `dev.jsonl` against `gold-dev.yaml` (a small gold subset of dev; no baselines, since they are trained on dev) into `out/eval/<set>-dev/`, and `--name` names the run, e.g. `--name gpt-v3` for a prompt variant. Every result records the model and `PROMPT_VERSION` ([src/megatron/prompt.py](src/megatron/prompt.py)).
 
 **Triage time (#43).** `megatron-triage` measures the business goal's part the system changes: a person triages half of 30 requests by hand (department, who / where / when / what) and checks the service's tickets for the other half, on a local page that times each request; `report` gives the median times, the reduction with a bootstrap range and the departments' accuracy. Method, limits and results: [docs/triage-time.md](docs/triage-time.md).
