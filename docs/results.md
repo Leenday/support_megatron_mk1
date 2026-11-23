@@ -88,7 +88,7 @@ On 2026-11-11 the evaluation was rerun on configs exported from the service data
 
 ## Triage time (#43)
 
-On 2026-11-17 one participant triaged 30 RU test requests outside the gold subset: 15 by hand (department, who / where / when / what) and 15 by checking the service's ticket, in alternating blocks of 5, timed on a local page (`megatron-triage`). Median 31.2 s by hand against 9.7 s with the service (8.3 s check + 1.5 s model): **69 % shorter (95 % range 44–79 %)**, goal 30 %. Department right: 73 % by hand, 93 % with the service (ranges overlap). The participant kept every service department, including the one wrong, so checks need the Validator (#57). Method, checks and limits: [triage-time.md](triage-time.md).
+On 2026-11-17 one participant triaged 30 RU test requests outside the gold subset: 15 by hand (department, who / where / when / what) and 15 by checking the service's ticket, in alternating blocks of 5, timed on a local page (`megatron-triage`). Median 31.2 s by hand against 9.7 s with the service (8.3 s check + 1.5 s model): **69 % shorter (95 % range 44–79 %)**, goal 30 %. Department right: 73 % by hand, 93 % with the service (ranges overlap). The participant kept every service department, including the one wrong, so checks need the Validator (#57). On 2026-11-23 a second participant, a team member, triaged 30 requests of the harder local `buckets` set (three buckets of another support team; the service right on 23 of 30) with the halves swapped: median 76.1 s by hand against 41.2 s with the service, **46 % shorter (95 % range −3–67 %)**, so not proven on this set; after the first block the gain is near 30 %. Department right: 47 % by hand, 73 % with the service; the person kept both service errors and changed two right departments to wrong ones. Method, checks and limits: [triage-time.md](triage-time.md).
 
 ## Choice of model
 
@@ -109,5 +109,5 @@ On 2026-11-17 one participant triaged 30 RU test requests outside the gold subse
 | "who", "what" F1 (story 8) | ≥ 0.90 | 0.95, 0.97 | met |
 | "when", identifiers F1 | ≥ 0.85 | 0.87, 0.92 (with the shape filter, #35) | met |
 | "where" F1 | ≥ 0.75 | by words 0.64; with the vocabulary 0.81 (0.67–0.93); `systems` F1 0.91 (#34) | met with the vocabulary (lower range end 0.67); by words open |
-| Triage time, request → ticket in work (business goal) | −30 % | triage −69 % (44–79 %): 31 s by hand → 10 s with the service, median (#43) | met for triage, one participant; queue time not measured |
+| Triage time, request → ticket in work (business goal) | −30 % | triage −69 % (44–79 %) on `ru`: 31 s → 10 s, median; −46 % (−3–67 %) on `buckets`: 76 s → 41 s (#43) | met on `ru` (the author); on `buckets` (a second participant) met at the median, not proven; queue time not measured |
 | Local model as an alternative (story 30) | ≥ 0.85 accuracy, ≤ 10 s | 0.29, ~3 min (qwen3:1.7b, CPU) | open: #44 |
