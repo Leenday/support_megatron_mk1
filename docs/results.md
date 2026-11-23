@@ -90,6 +90,19 @@ On 2026-11-11 the evaluation was rerun on configs exported from the service data
 
 On 2026-11-17 one participant triaged 30 RU test requests outside the gold subset: 15 by hand (department, who / where / when / what) and 15 by checking the service's ticket, in alternating blocks of 5, timed on a local page (`megatron-triage`). Median 31.2 s by hand against 9.7 s with the service (8.3 s check + 1.5 s model): **69 % shorter (95 % range 44–79 %)**, goal 30 %. Department right: 73 % by hand, 93 % with the service (ranges overlap). The participant kept every service department, including the one wrong, so checks need the Validator (#57). On 2026-11-23 a second participant, a team member, triaged 30 requests of the harder local `buckets` set (three buckets of another support team; the service right on 23 of 30) with the halves swapped: median 76.1 s by hand against 41.2 s with the service, **46 % shorter (95 % range −3–67 %)**, so not proven on this set; after the first block the gain is near 30 %. Department right: 47 % by hand, 73 % with the service; the person kept both service errors and changed two right departments to wrong ones. Method, checks and limits: [triage-time.md](triage-time.md).
 
+## Department descriptions that say when to choose (#67, step 1)
+
+On 2026-11-23 the EN queue descriptions were rewritten as "choose when … · not when … → X", from the labels of the dataset's 16 230 English tickets outside the test set. For example, 50 % of the questions about prices and plans are billing, and only 3 % of all tickets are sales, while prompt v4 sent 40 % of the dev requests to sales. gpt-5.4-mini, prompt v4, the same program:
+
+| EN | Requests | Accuracy | Macro-F1 | Expected in candidates |
+|---|---|---|---|---|
+| dev: v4 descriptions | 40 | 0.20 (0.10–0.33) | 0.17 (0.07–0.25) | 0.40 |
+| dev: "when to choose" | 40 | 0.23 (0.10–0.35) | 0.23 (0.10–0.32) | 0.30 |
+| test: v4 descriptions | 110 | 0.27 (0.19–0.36) | 0.22 (0.15–0.27) | 0.44 |
+| test: "when to choose" | 110 | 0.22 (0.15–0.29) | 0.18 (0.12–0.23) | 0.30 |
+
+**No gain; the v4 descriptions stay.** The sales bias went (sales answers on test 35 → 1), but the answers moved to the dataset's large queues: technical and product support got 97 of the 110 answers, against 48 % of the pool. The test part is balanced, 11 requests per queue, so the answers that follow the dataset's proportions lose the sales hits and gain little elsewhere, because the text says little about the label. Descriptions alone cannot fix labels that do not follow from the text; step 2 (similar confirmed tickets as examples) is the remaining lever. The run is `out/eval/en/gpt-5.4-mini-v4-when.jsonl`; RU uses its own departments and is not affected.
+
 ## Choice of model
 
 **gpt-5.4-mini with prompt v3** is the model for iteration 2.
