@@ -19,9 +19,11 @@ from django.db.models import Count, Q, QuerySet
 from django.utils import timezone
 from pydantic import BaseModel, Field
 
+from megatron.classifier import DepartmentClassifier
 from megatron.departments import Department as DepartmentConfig
 from megatron.departments import DepartmentsConfig, RoutingWeights, load_departments
 from megatron.departments import System as SystemConfig
+from megatron.inputs import load_requests
 from megatron.llm import BackendError, ExtractionError, Extractor, build_extractor
 from megatron.prompt import PROMPT_VERSION
 from megatron.routing import route, score_candidates
@@ -29,6 +31,7 @@ from megatron.settings import Settings
 from megatron.ticket import RoutedTicket
 from support.models import (
     Department,
+    HistoryTicket,
     Request,
     RoutingSettings,
     System,
@@ -131,6 +134,124 @@ def departments_config() -> DepartmentsConfig:
     )
 
 
+def confirmed_history() -> list[tuple[str, str]]:
+    """(text, department) of the tickets whose department is confirmed (#73): the imported
+    history and the closed tickets whose specialist answered "the department was right".
+
+    Corrections ("it should have gone to X") are left out until a validator confirms them
+    (#67): a specialist's correction is wrong often enough to teach the classifier errors.
+    """
+    active = set(Department.objects.filter(active=True).values_list("id", flat=True))
+    imported = HistoryTicket.objects.filter(department_id__in=active).values_list(
+        "text", "department_id"
+    )
+    closed = (
+        Ticket.objects.filter(
+            status=Ticket.Status.DONE,
+            department_id__in=active,
+            events__kind=TicketEvent.Kind.STATUS_CHANGED,
+            events__data__department_correct=True,
+        )
+        .values_list("request__text", "department_id")
+        .distinct()
+    )
+    return [*imported, *closed]
+
+
+# The classifier is retrained only when the history changed by a tenth (at least 20 tickets):
+# training on thousands of tickets takes seconds, a request must not wait for it each time.
+_classifier: DepartmentClassifier | None = None
+
+
+def history_classifier() -> DepartmentClassifier | None:
+    """The classifier on the confirmed history, or None while the history is too small (or
+    abstaining is off): then the service routes as before, by the model alone."""
+    global _classifier
+    minimum = RoutingSettings.load().abstain_min_history
+    history = confirmed_history() if minimum else []
+    if not minimum or len(history) < minimum:
+        return None
+    if _classifier is None or abs(len(history) - _classifier.size) >= max(
+        20, _classifier.size // 10
+    ):
+        texts, departments = zip(*history, strict=True)
+        try:
+            _classifier = DepartmentClassifier(texts, departments)
+        except ValueError:  # one department only: nothing to tell apart
+            return None
+    return _classifier
+
+
+class RoutingMeasures(BaseModel):
+    """How routing does in operation (#73), for the review page."""
+
+    tickets: int
+    abstained: int = Field(
+        description="sent to the fallback for triage: model and history disagreed"
+    )
+    closed_routed: int = Field(description="closed tickets routed automatically, with an answer")
+    wrong_routed: int = Field(description="of those, closed as 'it should have gone to X'")
+    reassigned: int = Field(description="tickets returned or reassigned at least once")
+    history: int = Field(description="tickets with a confirmed department")
+    history_needed: int = Field(description="the threshold; 0 = abstaining off")
+
+    @property
+    def routed_share(self) -> float | None:
+        return 1 - self.abstained / self.tickets if self.tickets else None
+
+    @property
+    def wrong_share(self) -> float | None:
+        return self.wrong_routed / self.closed_routed if self.closed_routed else None
+
+    @property
+    def reassigned_share(self) -> float | None:
+        return self.reassigned / self.tickets if self.tickets else None
+
+
+def routing_measures() -> RoutingMeasures:
+    kinds = TicketEvent.Kind
+    abstained = set(
+        TicketEvent.objects.filter(kind=kinds.CREATED, data__check__abstained=True).values_list(
+            "ticket_id", flat=True
+        )
+    )
+    answers = dict(
+        TicketEvent.objects.filter(
+            kind=kinds.STATUS_CHANGED, data__has_key="department_correct"
+        ).values_list("ticket_id", "data__department_correct")
+    )
+    routed_answers = [correct for ticket, correct in answers.items() if ticket not in abstained]
+    return RoutingMeasures(
+        tickets=Ticket.objects.count(),
+        abstained=len(abstained),
+        closed_routed=len(routed_answers),
+        wrong_routed=sum(correct is False for correct in routed_answers),
+        reassigned=TicketEvent.objects.filter(kind__in=(kinds.RETURNED, kinds.REASSIGNED))
+        .values("ticket_id")
+        .distinct()
+        .count(),
+        history=len(confirmed_history()),
+        history_needed=RoutingSettings.load().abstain_min_history,
+    )
+
+
+def import_history(path: Path, replace: bool = False) -> int:
+    """Import solved tickets (.jsonl with `text` and `expected`, the department id) as the
+    confirmed history; returns how many were imported."""
+    requests = load_requests(path)
+    known = set(Department.objects.values_list("id", flat=True))
+    unknown = sorted({r.expected or "" for r in requests} - known)
+    if unknown:
+        raise ValueError(f"unknown departments: {', '.join(unknown)}")
+    with transaction.atomic():
+        if replace:
+            HistoryTicket.objects.all().delete()
+        HistoryTicket.objects.bulk_create(
+            HistoryTicket(text=r.text, department_id=r.expected) for r in requests
+        )
+    return len(requests)
+
+
 def default_extractor(config: DepartmentsConfig) -> Extractor:
     return build_extractor(config, Settings())
 
@@ -224,6 +345,21 @@ def create_ticket(
 
     routed = route(extraction.ticket, config)
     scores = score_candidates(extraction.ticket, config)
+    # Abstain (#73): with a confirmed history, a classifier checks the model's best fit; when
+    # they disagree, a person triages the ticket in the fallback department.
+    check = None
+    classifier = history_classifier()
+    if classifier:
+        suggested, probability = classifier.predict(text)
+        best = extraction.ticket.candidates[0]
+        check = {
+            "history": suggested,
+            "probability": round(probability, 2),
+            "agree": suggested == best,
+        }
+        if not check["agree"] and routed.department != config.fallback.id:
+            routed = routed.model_copy(update={"department": config.fallback.id})
+            check["abstained"] = True
     with transaction.atomic():
         request.save()
         ticket = Ticket.objects.create(
@@ -238,7 +374,8 @@ def create_ticket(
                 "department": routed.department,
                 "scores": {d: round(s, 3) for d, s in scores.items()},
                 "load": {d: config.get(d).load for d in scores},
-            },
+            }
+            | ({"check": check} if check else {}),
         )
     return request
 

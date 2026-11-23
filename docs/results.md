@@ -152,6 +152,17 @@ Session 08 recommends an exact refusal token. The prompt already lets the model 
 
 **Rejected: the prompt stays v4.** The model does not see its own mistakes: it stays confident where it is wrong, as the literature found for prompted LLMs' confidence ([Gupta, arXiv 2610.31657](https://arxiv.org/abs/2610.31657)). Abstaining needs a second, independent opinion: a classifier trained on the confirmed history (see above, and #73).
 
+## Abstaining in the service (#73)
+
+The service now abstains once there is a confirmed history: a TF-IDF + logistic regression classifier (`src/megatron/classifier.py`) trained on the imported history and on the closed tickets whose specialist answered "the department was right" checks the model's best fit. When they disagree, the ticket goes to the fallback department for triage, with both opinions on the ticket page. Checked on the saved EN answers with the same combination, the model v4 and the classifier trained on the pool without near-duplicates of the requests:
+
+| EN | Model alone: wrong routes | Abstaining: routed automatically | Accuracy of those | Wrong routes |
+|---|---|---|---|---|
+| dev, 40 | 80 % | 20 % | 0.75 | 5 % |
+| test, 110 | 73 % | 21 % | 0.61 | 8 % |
+
+On this set most requests go to triage, because the labels are hard to tell from the text. On a set where the model is right most of the time the two agree more often and fewer requests wait for a person; this is to be measured in operation with the review page's three measures.
+
 ## Choice of model
 
 **gpt-5.4-mini with prompt v3** is the model for iteration 2.

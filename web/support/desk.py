@@ -18,7 +18,7 @@ from django.shortcuts import redirect, render
 from django.utils.translation import get_language, gettext_lazy
 from django.utils.translation import gettext as _
 
-from support import vocabulary, workflow
+from support import services, vocabulary, workflow
 from support.forms import (
     ApproveForm,
     CloseForm,
@@ -29,7 +29,6 @@ from support.forms import (
     TicketEditForm,
 )
 from support.models import Department, Proposal, System, Ticket, TicketEvent, User
-from support.services import visible_tickets
 
 LISTS = {
     "queue": gettext_lazy("Queue"),
@@ -74,7 +73,7 @@ def department_names() -> dict[str, str]:
 def find_ticket(user: User, pk: int) -> Ticket:
     """A ticket the user may see: of the visible ones, or assigned to the user."""
     found = (
-        visible_tickets(user).filter(pk=pk).first()
+        services.visible_tickets(user).filter(pk=pk).first()
         or Ticket.objects.select_related("department", "assignee", "request")
         .filter(pk=pk, assignee=user)
         .first()
@@ -90,7 +89,7 @@ def queue(request: HttpRequest) -> HttpResponse:
     current = request.GET.get("list", "queue")
     if current not in LISTS:
         current = "queue"
-    visible = visible_tickets(user)
+    visible = services.visible_tickets(user)
     queue_tickets = visible.filter(status=Ticket.Status.NEW)
     mine = Ticket.objects.select_related("department", "assignee").filter(assignee=user)
     tickets = {"queue": queue_tickets, "mine": mine, "all": visible}[current]
@@ -138,6 +137,11 @@ def describe(event: TicketEvent, names: dict[str, str]) -> str:
     """One line of the ticket's history, in the interface language."""
     data = event.data
     match event.kind:
+        case TicketEvent.Kind.CREATED if data.get("check", {}).get("abstained"):
+            return _(
+                "Created and sent to “%(department)s” for triage: "
+                "the model and the history disagreed"
+            ) % {"department": names.get(data.get("department", ""), data.get("department"))}
         case TicketEvent.Kind.CREATED:
             return _("Created and routed to “%(department)s”") % {
                 "department": names.get(data.get("department", ""), data.get("department"))
@@ -185,6 +189,20 @@ def describe(event: TicketEvent, names: dict[str, str]) -> str:
     return event.get_kind_display()
 
 
+def triage(ticket: Ticket, names: dict[str, str]) -> dict | None:
+    """Why the ticket waits for triage (#73): the model's best fit and the history's guess."""
+    created = ticket.events.filter(kind=TicketEvent.Kind.CREATED).first()
+    check = created.data.get("check", {}) if created else {}
+    if not check.get("abstained"):
+        return None
+    best = ticket.candidates[0] if ticket.candidates else ""
+    return {
+        "model": names.get(best, best),
+        "history": names.get(check["history"], check["history"]),
+        "probability": round(100 * check["probability"]),
+    }
+
+
 def show_ticket(request: HttpRequest, ticket: Ticket, **forms) -> HttpResponse:
     user = staff(request)
     names = department_names()
@@ -209,6 +227,7 @@ def show_ticket(request: HttpRequest, ticket: Ticket, **forms) -> HttpResponse:
         "can_return": can_return,
         "close_form": forms.get("close_form") or close_form(ticket),
         "ask_system": bool(ticket.where) and not ticket.systems,
+        "triage": triage(ticket, names),
     }
     return render(request, "support/desk_ticket.html", context, status=400 if forms else 200)
 
@@ -306,6 +325,7 @@ def review(request: HttpRequest) -> HttpResponse:
         .select_related("proposed_by", "reviewed_by", "system")
         .order_by("-reviewed_at")[:20],
         "me": user.pk,
+        "routing": services.routing_measures(),
     }
     return render(request, "support/desk_review.html", context)
 

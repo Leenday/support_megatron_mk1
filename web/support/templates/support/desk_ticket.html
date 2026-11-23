@@ -18,6 +18,7 @@
       <dt>{% translate "Identifiers" %}</dt><dd>{{ ticket.identifiers|join:", "|default:"—" }}</dd>
       <dt>{% translate "Tags" %}</dt><dd>{% for tag in ticket.tags %}<span class="tag">{{ tag }}</span>{% empty %}—{% endfor %}</dd>
       <dt>{% translate "Model's candidates" %}</dt><dd>{{ candidates|join:" → " }}</dd>
+      {% if triage %}<dt>{% translate "Triage" %}</dt><dd class="triage">{% blocktranslate with model=triage.model history=triage.history probability=triage.probability %}The model chose “{{ model }}”, the history of solved tickets “{{ history }}” ({{ probability }} %). Choose the department and return the ticket there, or work on it here.{% endblocktranslate %}</dd>{% endif %}
       <dt>{% translate "Created" %}</dt><dd>{{ ticket.created_at|date:"SHORT_DATETIME_FORMAT" }}</dd>
       <dt>{% translate "Taken" %}</dt><dd>{{ ticket.taken_at|date:"SHORT_DATETIME_FORMAT"|default:"—" }}</dd>
       <dt>{% translate "Closed" %}</dt><dd>{{ ticket.closed_at|date:"SHORT_DATETIME_FORMAT"|default:"—" }}</dd>

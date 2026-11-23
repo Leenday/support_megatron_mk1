@@ -204,6 +204,15 @@ class RoutingSettings(models.Model):
             "different specialists proposed it; 0 = never. New systems always need a validator."
         ),
     )
+    abstain_min_history = models.PositiveIntegerField(
+        _("Abstain from routing with a history of"),
+        default=200,
+        help_text=_(
+            "Once this many tickets with a confirmed department exist, a classifier trained on "
+            "them checks the model: when they disagree, the ticket goes to the fallback "
+            "department for triage. 0 = never."
+        ),
+    )
 
     class Meta:
         verbose_name = verbose_name_plural = _("routing settings")
@@ -324,6 +333,28 @@ class Ticket(models.Model):
 
     def __str__(self) -> str:
         return f"#{self.pk} {self.summary}"
+
+
+class HistoryTicket(models.Model):
+    """A solved ticket with a confirmed department, imported from another system (#73).
+
+    With the closed tickets the specialists confirmed, it trains the classifier that decides
+    when the service abstains from routing; importing a history lets that work from day one.
+    """
+
+    text = models.TextField(_("Request text"))
+    department = models.ForeignKey(
+        Department, verbose_name=_("Department"), on_delete=models.CASCADE, related_name="history"
+    )
+    imported_at = models.DateTimeField(_("Imported"), auto_now_add=True)
+
+    class Meta:
+        verbose_name = _("history ticket")
+        verbose_name_plural = _("ticket history")
+        ordering = ["pk"]
+
+    def __str__(self) -> str:
+        return f"{self.department_id}: {self.text[:60]}"
 
 
 class TicketEvent(models.Model):

@@ -159,6 +159,7 @@ def test_admin_manages_departments_routing_and_export(client, departments_path, 
         "rank_match": "[1, 0.4]",
         "languages": '["ru","en"]',
         "spelling_auto_approve": 0,
+        "abstain_min_history": 200,
     }
     assert client.post(settings.url, weights | {"rank_match": "[0.4, 1]"}).status_code == 200
     assert client.post(settings.url, weights | {"w_load": -1}).status_code == 200

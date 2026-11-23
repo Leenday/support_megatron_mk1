@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-11-19 11:43+0300\n"
+"POT-Creation-Date: 2026-11-23 14:21+0300\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: Russian\n"
@@ -15,7 +15,9 @@ msgstr ""
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"Plural-Forms: nplurals=4; plural=(n%10==1 && n%100!=11 ? 0 : n%10>=2 && n%10<=4 && (n%100<12 || n%100>14) ? 1 : n%10==0 || (n%10>=5 && n%10<=9) || (n%100>=11 && n%100<=14)? 2 : 3);\n"
+"Plural-Forms: nplurals=4; plural=(n%10==1 && n%100!=11 ? 0 : n%10>=2 && "
+"n%10<=4 && (n%100<12 || n%100>14) ? 1 : n%10==0 || (n%10>=5 && n%10<=9) || "
+"(n%100>=11 && n%100<=14)? 2 : 3);\n"
 
 msgid "Megatron · Administration"
 msgstr "Megatron · Панель управления"
@@ -64,6 +66,12 @@ msgstr "Мои заявки"
 
 msgid "All tickets"
 msgstr "Все заявки"
+
+#, python-format
+msgid ""
+"Created and sent to “%(department)s” for triage: the model and the history "
+"disagreed"
+msgstr "Создана и отправлена на разбор в «%(department)s»: модель и история разошлись"
 
 #, python-format
 msgid "Created and routed to “%(department)s”"
@@ -347,8 +355,8 @@ msgstr "Ёмкость"
 
 msgid "Open tickets the department can handle at once; empty = load not used."
 msgstr ""
-"Сколько открытых заявок отдел может обработать одновременно. Пустое значение"
-" отключает учёт загрузки."
+"Сколько открытых заявок отдел может обработать одновременно. Пустое значение "
+"отключает учёт загрузки."
 
 msgid "Receives requests that fit no other department."
 msgstr "Получает обращения, для которых не подошёл другой отдел."
@@ -409,12 +417,21 @@ msgstr "Утверждать написание автоматически по�
 
 msgid ""
 "A new spelling of a known system is approved without a validator once this "
-"many different specialists proposed it; 0 = never. New systems always need a"
-" validator."
+"many different specialists proposed it; 0 = never. New systems always need a "
+"validator."
 msgstr ""
 "Новое написание известной системы утверждается без валидатора, когда его "
 "предложили столько разных специалистов; 0 = никогда. Новую систему всегда "
 "утверждает валидатор."
+
+msgid "Abstain from routing with a history of"
+msgstr "Воздерживаться от маршрутизации при истории от"
+
+msgid ""
+"Once this many tickets with a confirmed department exist, a classifier "
+"trained on them checks the model: when they disagree, the ticket goes to the "
+"fallback department for triage. 0 = never."
+msgstr "Когда заявок с подтверждённым отделом станет столько, обученный на них классификатор проверяет модель: если они расходятся, заявка уходит на разбор в общий отдел. 0 — никогда."
 
 msgid "routing settings"
 msgstr "настройки маршрутизации"
@@ -508,6 +525,15 @@ msgstr "заявка"
 
 msgid "tickets"
 msgstr "заявки"
+
+msgid "Imported"
+msgstr "Импортирована"
+
+msgid "history ticket"
+msgstr "заявка из истории"
+
+msgid "ticket history"
+msgstr "история заявок"
 
 msgid "Status changed"
 msgstr "Статус изменён"
@@ -659,9 +685,39 @@ msgid ""
 "Proposals from closed tickets and specialists' edits. An approved change "
 "reaches the next request at once; nobody reviews their own."
 msgstr ""
-"Предложения из закрытых заявок и правки специалистов. Утверждённое изменение"
-" сразу действует для следующего обращения; своё предложение никто не "
+"Предложения из закрытых заявок и правки специалистов. Утверждённое изменение "
+"сразу действует для следующего обращения; своё предложение никто не "
 "проверяет."
+
+msgid "Routing"
+msgstr "Маршрутизация"
+
+#, python-format
+msgid ""
+"A classifier trained on %(history)s tickets with a confirmed department "
+"checks the model; when they disagree, the ticket goes to triage."
+msgstr "Классификатор, обученный на %(history)s заявках с подтверждённым отделом, проверяет модель; если они расходятся, заявка уходит на разбор."
+
+#, python-format
+msgid ""
+"The model routes alone: %(history)s of %(needed)s tickets with a confirmed "
+"department needed before a classifier checks it."
+msgstr "Модель маршрутизирует одна: заявок с подтверждённым отделом %(history)s из %(needed)s, нужных, чтобы её проверял классификатор."
+
+msgid "The model routes alone: abstaining is off in the routing settings."
+msgstr "Модель маршрутизирует одна: воздержание выключено в настройках маршрутизации."
+
+msgid "Routed automatically"
+msgstr "Направлено автоматически"
+
+msgid "sent to triage"
+msgstr "на разборе"
+
+msgid "Wrong routes among closed tickets routed automatically"
+msgstr "Неверный отдел среди закрытых заявок, направленных автоматически"
+
+msgid "Returned or reassigned"
+msgstr "Возвращены или переназначены"
 
 msgid "Vocabulary proposals"
 msgstr "Предложения в словарь"
@@ -756,6 +812,16 @@ msgstr "Решений пока нет."
 #, python-format
 msgid "Ticket #%(number)s"
 msgstr "Заявка №%(number)s"
+
+msgid "Triage"
+msgstr "Разбор"
+
+#, python-format
+msgid ""
+"The model chose “%(model)s”, the history of solved tickets “%(history)s” "
+"(%(probability)s %%). Choose the department and return the ticket there, or "
+"work on it here."
+msgstr "Модель выбрала «%(model)s», история решённых заявок — «%(history)s» (%(probability)s %%). Выберите отдел и верните заявку туда или работайте с ней здесь."
 
 #, python-format
 msgid "Request #%(number)s"

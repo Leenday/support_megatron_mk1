@@ -6,6 +6,18 @@
 <p class="help">{% translate "Proposals from closed tickets and specialists' edits. An approved change reaches the next request at once; nobody reviews their own." %}</p>
 
 <div class="card">
+  <h2>{% translate "Routing" %}</h2>
+  <p class="help">{% if routing.history_needed and routing.history >= routing.history_needed %}{% blocktranslate with history=routing.history %}A classifier trained on {{ history }} tickets with a confirmed department checks the model; when they disagree, the ticket goes to triage.{% endblocktranslate %}{% elif routing.history_needed %}{% blocktranslate with history=routing.history needed=routing.history_needed %}The model routes alone: {{ history }} of {{ needed }} tickets with a confirmed department needed before a classifier checks it.{% endblocktranslate %}{% else %}{% translate "The model routes alone: abstaining is off in the routing settings." %}{% endif %}</p>
+  <table>
+    <tbody>
+      <tr><td>{% translate "Routed automatically" %}</td><td>{% if routing.routed_share is not None %}{% widthratio routing.routed_share 1 100 %} % ({{ routing.abstained }} {% translate "sent to triage" %}){% else %}—{% endif %}</td></tr>
+      <tr><td>{% translate "Wrong routes among closed tickets routed automatically" %}</td><td>{% if routing.wrong_share is not None %}{% widthratio routing.wrong_share 1 100 %} % ({{ routing.wrong_routed }} / {{ routing.closed_routed }}){% else %}—{% endif %}</td></tr>
+      <tr><td>{% translate "Returned or reassigned" %}</td><td>{% if routing.reassigned_share is not None %}{% widthratio routing.reassigned_share 1 100 %} % ({{ routing.reassigned }} / {{ routing.tickets }}){% else %}—{% endif %}</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="card">
   <h2>{% translate "Vocabulary proposals" %} <span class="count">{{ groups|length }}</span></h2>
   {% if groups %}
   <div class="table-scroll"><table>
