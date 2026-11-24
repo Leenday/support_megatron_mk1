@@ -107,6 +107,16 @@ def propose_edit(ticket: Ticket, user: User, changes: dict) -> Proposal | None:
     )
 
 
+def propose_department(ticket: Ticket, user: User, department: str) -> Proposal:
+    """The specialist's "it should have gone to X", for a validator to confirm (#67)."""
+    return Proposal.objects.create(
+        kind=Proposal.Kind.DEPARTMENT,
+        ticket=ticket,
+        proposed_by=user,
+        changes={"department_id": [ticket.department_id, department]},
+    )
+
+
 def pending_group(proposal: Proposal) -> list[Proposal]:
     return list(
         Proposal.objects.filter(
@@ -175,8 +185,9 @@ def vocabulary_groups() -> list[Group]:
 
 
 def pending_edits() -> QuerySet[Proposal]:
+    """Field edits and department corrections waiting for a validator."""
     return Proposal.objects.filter(
-        kind=Proposal.Kind.FIELD_EDIT, status=Proposal.Status.PENDING
+        kind__in=Proposal.EDITS, status=Proposal.Status.PENDING
     ).select_related("proposed_by", "ticket")
 
 
@@ -245,20 +256,23 @@ def reject(proposal_id: int, reviewer: User, reason: str) -> None:
 
 @transaction.atomic
 def review_edit(proposal_id: int, reviewer: User, confirm: bool, comment: str = "") -> Ticket:
-    """Confirm a specialist's field edit, or revert it to the model's values.
+    """Confirm a specialist's field edit, or revert it to the model's values; or confirm or
+    reject a department correction.
 
     The ticket's history keeps the edit, the decision and, on a revert, the values put back.
-    A field changed again since the edit is left as it is.
+    A field changed again since the edit is left as it is. A department correction changes
+    nothing on the closed ticket: it decides whether the ticket joins the confirmed history
+    with the corrected department (#67).
     """
     proposal = Proposal.objects.select_for_update().get(pk=proposal_id)
-    if proposal.kind != Proposal.Kind.FIELD_EDIT or proposal.status != Proposal.Status.PENDING:
+    if proposal.kind not in Proposal.EDITS or proposal.status != Proposal.Status.PENDING:
         raise ActionRefused(_("This edit is already reviewed."))
     require_reviewer(reviewer, [proposal])
     if not confirm and not comment.strip():
         raise ActionRefused(_("Say why the edit is reverted."))
     ticket = locked(proposal.ticket_id)
     reverted = {}
-    if not confirm:
+    if not confirm and proposal.kind == Proposal.Kind.FIELD_EDIT:
         for name, (old, new) in proposal.changes.items():
             if getattr(ticket, name) == new:
                 setattr(ticket, name, old)
@@ -271,8 +285,10 @@ def review_edit(proposal_id: int, reviewer: User, confirm: bool, comment: str = 
         actor=reviewer,
         data={
             "proposal": proposal.pk,
+            "kind": proposal.kind,
             "decision": "confirmed" if confirm else "reverted",
             "fields": list(proposal.changes),
+            "changes": proposal.changes,
             "reverted": reverted,
             "comment": comment,
         },

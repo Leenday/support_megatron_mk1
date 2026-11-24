@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-11-23 14:32+0300\n"
+"POT-Creation-Date: 2026-11-24 13:17+0300\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: Russian\n"
@@ -97,6 +97,14 @@ msgid "Reassigned from “%(from)s” to “%(to)s”"
 msgstr "Переназначена из отдела «%(from)s» в отдел «%(to)s»"
 
 #, python-format
+msgid "Validator confirmed the department correction to “%(department)s”"
+msgstr "Валидатор подтвердил исправление отдела на «%(department)s»"
+
+#, python-format
+msgid "Validator rejected the department correction to “%(department)s”"
+msgstr "Валидатор отклонил исправление отдела на «%(department)s»"
+
+#, python-format
 msgid "Validator confirmed the edit of %(fields)s"
 msgstr "Валидатор подтвердил правку: %(fields)s"
 
@@ -133,6 +141,12 @@ msgstr "Укажите, почему предложение отклонено."
 
 msgid "Rejected; it will not be asked again."
 msgstr "Отклонено; больше спрашивать не будем."
+
+msgid "Correction confirmed."
+msgstr "Исправление подтверждено."
+
+msgid "Correction rejected."
+msgstr "Исправление отклонено."
 
 msgid "Edit confirmed."
 msgstr "Правка подтверждена."
@@ -587,6 +601,9 @@ msgstr "Написание"
 msgid "Field edit"
 msgstr "Правка поля"
 
+msgid "Department correction"
+msgstr "Исправление отдела"
+
 msgid "Pending"
 msgstr "Ожидает"
 
@@ -619,8 +636,8 @@ msgstr "Нормализованный текст: по нему группир�
 msgid "Changes"
 msgstr "Изменения"
 
-msgid "Field edit: {field: [old, new]}."
-msgstr "Правка поля: {поле: [было, стало]}."
+msgid "Field edit or department correction: {field: [old, new]}."
+msgstr "Правка поля или исправление отдела: {поле: [было, стало]}."
 
 msgid "Reviewed by"
 msgstr "Проверил"
@@ -725,6 +742,9 @@ msgstr "на разборе"
 msgid "Wrong routes among closed tickets routed automatically"
 msgstr "Неверный отдел среди закрытых заявок, направленных автоматически"
 
+msgid "Department corrections rejected by a validator"
+msgstr "Исправления отдела, отклонённые валидатором"
+
 msgid "Returned or reassigned"
 msgstr "Возвращены или переназначены"
 
@@ -765,6 +785,15 @@ msgstr "Проверять нечего."
 
 msgid "Specialists' edits"
 msgstr "Правки специалистов"
+
+msgid ""
+"A department correction counts as confirmed only after your decision: then "
+"the ticket becomes an example for the model and training data for the "
+"classifier."
+msgstr ""
+"Исправление отдела считается подтверждённым только после вашего решения: "
+"тогда заявка становится примером для модели и данными для обучения "
+"классификатора."
 
 msgid "Change"
 msgstr "Изменение"

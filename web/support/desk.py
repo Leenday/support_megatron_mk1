@@ -168,6 +168,14 @@ def describe(event: TicketEvent, names: dict[str, str]) -> str:
                 "from": names.get(data["from"], data["from"]),
                 "to": names.get(data["to"], data["to"]),
             }
+        case TicketEvent.Kind.REVIEWED if data.get("kind") == Proposal.Kind.DEPARTMENT:
+            _old, new = data["changes"]["department_id"]
+            text = (
+                _("Validator confirmed the department correction to “%(department)s”")
+                if data.get("decision") == "confirmed"
+                else _("Validator rejected the department correction to “%(department)s”")
+            ) % {"department": names.get(new, new)}
+            return f"{text}: {data['comment']}" if data.get("comment") else text
         case TicketEvent.Kind.REVIEWED:
             labels = [
                 str(field.verbose_name)
@@ -318,8 +326,18 @@ def review(request: HttpRequest) -> HttpResponse:
     names = department_names()
     system_names = dict(System.objects.values_list("id", "name"))
     labels = {f.attname: str(f.verbose_name) for f in Ticket._meta.concrete_fields}
+
+    def shown(field: str, value: object) -> object:
+        return names.get(str(value), value) if field == "department_id" else value
+
     edits = [
-        (p, [(labels.get(f, f), old, new) for f, (old, new) in p.changes.items()])
+        (
+            p,
+            [
+                (labels.get(f, f), shown(f, old), shown(f, new))
+                for f, (old, new) in p.changes.items()
+            ],
+        )
         for p in vocabulary.pending_edits()
     ]
     context = {
@@ -373,8 +391,13 @@ def review_action(request: HttpRequest, pk: int, action: str) -> HttpResponse:
                 if not form.is_valid():
                     raise Http404
                 confirm = form.cleaned_data["decision"] == "confirm"
+                department = Proposal.objects.get(pk=pk).kind == Proposal.Kind.DEPARTMENT
                 vocabulary.review_edit(pk, user, confirm, form.cleaned_data["comment"])
-                messages.success(request, _("Edit confirmed.") if confirm else _("Edit reverted."))
+                if department:
+                    done = _("Correction confirmed.") if confirm else _("Correction rejected.")
+                else:
+                    done = _("Edit confirmed.") if confirm else _("Edit reverted.")
+                messages.success(request, done)
             case _:
                 raise Http404
     except Proposal.DoesNotExist as e:

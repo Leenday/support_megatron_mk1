@@ -127,7 +127,8 @@ def close(
     """Mark the ticket done, with the specialist's answer to "Was the department right?".
 
     `correct_department` None means "yes"; otherwise it is the department that should have
-    got the ticket. The answer is quality monitoring, not training data (#18, #16).
+    got the ticket. A "yes" makes the ticket part of the confirmed history (#73); a correction
+    goes to a validator first (#67), since specialists' corrections are wrong often enough.
 
     `systems` are the ticket's systems as the specialist confirmed them (None = as the model
     gave them), and `proposal` a vocabulary proposal (text, system id or None for a new
@@ -151,10 +152,10 @@ def close(
     ticket.status = Ticket.Status.DONE
     ticket.closed_at = timezone.now()
     ticket.save(update_fields=["status", "closed_at", "systems"])
+    from support import vocabulary  # imports this module
+
     proposed = " ".join(proposal[0].split()) if proposal else ""
     if proposal is not None and proposed:
-        from support import vocabulary  # imports this module
-
         text, system_id = proposal
         target = System.objects.filter(pk=system_id).first() if system_id else None
         if system_id and target is None:
@@ -176,6 +177,8 @@ def close(
             "proposal": proposed,
         },
     )
+    if correct_department is not None:
+        vocabulary.propose_department(ticket, user, correct_department)
     return ticket
 
 
