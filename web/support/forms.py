@@ -146,7 +146,14 @@ class DepartmentAdminForm(forms.ModelForm):
 class RoutingAdminForm(forms.ModelForm):
     class Meta:
         model = RoutingSettings
-        fields = ("w_match", "w_load", "rank_match", "languages", "spelling_auto_approve")
+        fields = (
+            "w_match",
+            "w_load",
+            "rank_match",
+            "languages",
+            "spelling_auto_approve",
+            "abstain_min_history",
+        )
 
     def clean(self):
         super().clean()

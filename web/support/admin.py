@@ -25,6 +25,7 @@ from support.models import (
     ROLES,
     ApiToken,
     Department,
+    HistoryTicket,
     Proposal,
     Request,
     RoutingSettings,
@@ -289,6 +290,15 @@ class RequestAdmin(SupportModelAdmin):
     list_filter = (FailedRequestFilter, "model", "created_at")
     search_fields = ("=id", "text", "contact", "error")
     exclude = ("access_code",)
+
+
+@admin.register(HistoryTicket, site=site)
+class HistoryTicketAdmin(SupportModelAdmin):
+    """Read only: the history is imported with `import_history` (#73)."""
+
+    list_display = ("department", "text", "imported_at")
+    list_filter = ("department",)
+    search_fields = ("text",)
 
 
 @admin.register(TicketEvent, site=site)
