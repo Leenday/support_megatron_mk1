@@ -395,7 +395,8 @@ class Proposal(models.Model):
     """A change proposed by a specialist, waiting for a validator (#57).
 
     Vocabulary proposals come from closing a ticket: a new system, or another spelling of a
-    known one. A field edit comes from a specialist changing the model's answer by hand. The
+    known one. A field edit comes from a specialist changing the model's answer by hand, and a
+    department correction from the answer "it should have gone to X" at closing (#67). The
     row is the change's record: who proposed it, who reviewed it, when and why.
     """
 
@@ -403,6 +404,7 @@ class Proposal(models.Model):
         NEW_SYSTEM = "new_system", _("New system")
         SPELLING = "spelling", _("Spelling")
         FIELD_EDIT = "field_edit", _("Field edit")
+        DEPARTMENT = "department", _("Department correction")
 
     class Status(models.TextChoices):
         PENDING = "pending", _("Pending")
@@ -410,6 +412,7 @@ class Proposal(models.Model):
         REJECTED = "rejected", _("Rejected")
 
     VOCABULARY = (Kind.NEW_SYSTEM, Kind.SPELLING)
+    EDITS = (Kind.FIELD_EDIT, Kind.DEPARTMENT)  # confirmed or turned down one by one
 
     kind = models.CharField(_("Kind"), max_length=20, choices=Kind.choices)
     status = models.CharField(
@@ -440,7 +443,10 @@ class Proposal(models.Model):
         max_length=200, blank=True, help_text=_("Normalised text: similar proposals group by it.")
     )
     changes = models.JSONField(
-        _("Changes"), default=dict, blank=True, help_text=_("Field edit: {field: [old, new]}.")
+        _("Changes"),
+        default=dict,
+        blank=True,
+        help_text=_("Field edit or department correction: {field: [old, new]}."),
     )
     created_at = models.DateTimeField(_("Created"), auto_now_add=True)
     reviewed_by = models.ForeignKey(

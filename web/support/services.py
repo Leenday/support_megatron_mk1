@@ -34,6 +34,7 @@ from megatron.ticket import RoutedTicket
 from support.models import (
     Department,
     HistoryTicket,
+    Proposal,
     Request,
     RoutingSettings,
     System,
@@ -138,10 +139,11 @@ def departments_config() -> DepartmentsConfig:
 
 def confirmed_history() -> list[tuple[str, str]]:
     """(text, department) of the tickets whose department is confirmed (#73): the imported
-    history and the closed tickets whose specialist answered "the department was right".
+    history, the closed tickets whose specialist answered "the department was right", and
+    those whose correction ("it should have gone to X") a validator confirmed (#67).
 
-    Corrections ("it should have gone to X") are left out until a validator confirms them
-    (#67): a specialist's correction is wrong often enough to teach the classifier errors.
+    A pending or rejected correction is left out: a specialist's correction is wrong often
+    enough (#43) to teach the classifier and the examples errors.
     """
     active = set(Department.objects.filter(active=True).values_list("id", flat=True))
     imported = HistoryTicket.objects.filter(department_id__in=active).values_list(
@@ -157,7 +159,14 @@ def confirmed_history() -> list[tuple[str, str]]:
         .values_list("request__text", "department_id")
         .distinct()
     )
-    return [*imported, *closed]
+    corrected = [
+        (text, changes["department_id"][1])
+        for text, changes in Proposal.objects.filter(
+            kind=Proposal.Kind.DEPARTMENT, status=Proposal.Status.APPROVED
+        ).values_list("ticket__request__text", "changes")
+        if changes["department_id"][1] in active
+    ]
+    return [*imported, *closed, *corrected]
 
 
 class HistoryModels(BaseModel, arbitrary_types_allowed=True):
@@ -207,6 +216,12 @@ class RoutingMeasures(BaseModel):
     reassigned: int = Field(description="tickets returned or reassigned at least once")
     history: int = Field(description="tickets with a confirmed department")
     history_needed: int = Field(description="the threshold; 0 = abstaining off")
+    corrections_reviewed: int = Field(
+        default=0, description="department corrections a validator decided on"
+    )
+    corrections_rejected: int = Field(
+        default=0, description="of those, rejected: how far specialists can be trusted as labels"
+    )
 
     @property
     def routed_share(self) -> float | None:
@@ -219,6 +234,12 @@ class RoutingMeasures(BaseModel):
     @property
     def reassigned_share(self) -> float | None:
         return self.reassigned / self.tickets if self.tickets else None
+
+    @property
+    def rejected_share(self) -> float | None:
+        if not self.corrections_reviewed:
+            return None
+        return self.corrections_rejected / self.corrections_reviewed
 
 
 def routing_measures() -> RoutingMeasures:
@@ -234,6 +255,7 @@ def routing_measures() -> RoutingMeasures:
         ).values_list("ticket_id", "data__department_correct")
     )
     routed_answers = [correct for ticket, correct in answers.items() if ticket not in abstained]
+    corrections = Proposal.objects.filter(kind=Proposal.Kind.DEPARTMENT)
     return RoutingMeasures(
         tickets=Ticket.objects.count(),
         abstained=len(abstained),
@@ -245,6 +267,8 @@ def routing_measures() -> RoutingMeasures:
         .count(),
         history=len(confirmed_history()),
         history_needed=RoutingSettings.load().abstain_min_history,
+        corrections_reviewed=corrections.exclude(status=Proposal.Status.PENDING).count(),
+        corrections_rejected=corrections.filter(status=Proposal.Status.REJECTED).count(),
     )
 
 

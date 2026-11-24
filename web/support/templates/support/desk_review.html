@@ -12,6 +12,7 @@
     <tbody>
       <tr><td>{% translate "Routed automatically" %}</td><td>{% if routing.routed_share is not None %}{% widthratio routing.routed_share 1 100 %} % ({{ routing.abstained }} {% translate "sent to triage" %}){% else %}—{% endif %}</td></tr>
       <tr><td>{% translate "Wrong routes among closed tickets routed automatically" %}</td><td>{% if routing.wrong_share is not None %}{% widthratio routing.wrong_share 1 100 %} % ({{ routing.wrong_routed }} / {{ routing.closed_routed }}){% else %}—{% endif %}</td></tr>
+      <tr><td>{% translate "Department corrections rejected by a validator" %}</td><td>{% if routing.rejected_share is not None %}{% widthratio routing.rejected_share 1 100 %} % ({{ routing.corrections_rejected }} / {{ routing.corrections_reviewed }}){% else %}—{% endif %}</td></tr>
       <tr><td>{% translate "Returned or reassigned" %}</td><td>{% if routing.reassigned_share is not None %}{% widthratio routing.reassigned_share 1 100 %} % ({{ routing.reassigned }} / {{ routing.tickets }}){% else %}—{% endif %}</td></tr>
     </tbody>
   </table>
@@ -60,6 +61,7 @@
 
 <div class="card">
   <h2>{% translate "Specialists' edits" %} <span class="count">{{ edits|length }}</span></h2>
+  <p class="help">{% translate "A department correction counts as confirmed only after your decision: then the ticket becomes an example for the model and training data for the classifier." %}</p>
   {% if edits %}
   <div class="table-scroll"><table>
     <thead><tr><th>{% translate "Ticket" %}</th><th>{% translate "Specialist" %}</th><th>{% translate "Change" %}</th><th>{% translate "Decision" %}</th></tr></thead>
@@ -73,7 +75,7 @@
           <form method="post" action="{% url 'desk_review_action' proposal.pk 'edit' %}">{% csrf_token %}
             <input type="text" name="comment" placeholder="{% translate 'Comment' %}" aria-label="{% translate 'Comment' %}" style="width: 12em">
             <button name="decision" value="confirm">{% translate "Confirm" %}</button>
-            <button name="decision" value="revert">{% translate "Revert" %}</button>
+            <button name="decision" value="revert">{% if proposal.kind == "department" %}{% translate "Reject" %}{% else %}{% translate "Revert" %}{% endif %}</button>
           </form>
         </td>
       </tr>
