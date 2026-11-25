@@ -174,7 +174,7 @@ gantt
     Translation RU ↔ EN (if time allows) [23] :t23, 2026-11-21, 2026-11-26
     Iteration 2 testing [19] :done, t19, 2026-11-18, 2026-11-20
     Measure triage time manual vs automatic [43] :done, t43, 2026-11-14, 2026-11-21
-    Local models on a GPU qwen3 4b / 8b [44] :t44, 2026-11-17, 2026-11-21
+    Local models on a GPU [44] :done, t44, 2026-11-17, 2026-11-25
     Design note split a request across departments [45] :done, t45, 2026-11-20, 2026-11-22
     Systems vocabulary from specialists' answers, approved by a Validator [57] :done, t57, 2026-11-14, 2026-11-20
     Validation done :milestone, m3, 2026-11-27, 0d
@@ -215,7 +215,7 @@ gantt
 | [#22](https://github.com/Leenday/support_megatron_mk1/issues/22) | Final presentation | 2026-12-07 | 2026-12-14 | All |  |
 | [#42](https://github.com/Leenday/support_megatron_mk1/issues/42) | JSON API with OpenAPI (Swagger) docs | 2026-11-10 | 2026-11-13 | Denis | ✅ |
 | [#43](https://github.com/Leenday/support_megatron_mk1/issues/43) | Measure triage time: manual vs automatic | 2026-11-14 | 2026-11-21 | Denis | ✅ |
-| [#44](https://github.com/Leenday/support_megatron_mk1/issues/44) | Local models on a GPU: qwen3:4b / 8b | 2026-11-17 | 2026-11-21 | Denis |  |
+| [#44](https://github.com/Leenday/support_megatron_mk1/issues/44) | Local models on a GPU | 2026-11-17 | 2026-11-25 | Daniil | ✅ |
 | [#45](https://github.com/Leenday/support_megatron_mk1/issues/45) | Design note: split a request across departments | 2026-11-20 | 2026-11-22 | Denis | ✅ |
 | [#34](https://github.com/Leenday/support_megatron_mk1/issues/34) | Systems vocabulary: a normalised 'system' next to free-text 'where' | 2026-11-21 | 2026-11-25 | Denis | ✅ |
 | [#35](https://github.com/Leenday/support_megatron_mk1/issues/35) | Rule-based check and extraction of identifiers and dates | 2026-11-19 | 2026-11-21 | Denis | ✅ |
