@@ -163,13 +163,36 @@ The service now abstains once there is a confirmed history: a TF-IDF + logistic 
 
 On this set most requests go to triage, because the labels are hard to tell from the text. On a set where the model is right most of the time the two agree more often and fewer requests wait for a person; this is to be measured in operation with the review page's three measures.
 
+## Local models on a GPU (#44)
+
+On 2026-11-25 a team member ran two larger local models on an AMD Radeon RX 7900 XTX (24 GB) through a llama.cpp server with an OpenAI-compatible API (`--backend openai`, `OPENAI_BASE_URL`). Same program and prompt v4, same test sets and configs; nothing trained. Every answer was a valid ticket on the first try. The cloud reference is gpt-5.4-mini with prompt v4 on RU and EN, and with prompt v3 and the current departments config on `buckets` (its v4 run used an older config). Paired: the difference with the cloud on the same requests, 95 % bootstrap range.
+
+| Department | gpt-5.4-mini (cloud) | Qwen3.8-35B-A3B (MoE, ~3B active) | gemma-4-31B (dense) |
+|---|---|---|---|
+| RU, 69 | 0.93 (0.87–0.99) · 1.5 s | **0.87 (0.78–0.94) · 2.8 s** | 0.88 (0.81–0.96) · 13.5 s |
+| paired vs cloud | | −0.06 (−0.13–0.00) | −0.04 (−0.12–+0.01) |
+| `buckets`, 100 | 0.82 (0.74–0.89) · 1.6 s | 0.86 (0.79–0.93) · 2.9 s | 0.89 (0.83–0.95) · 11.6 s |
+| paired vs cloud | | +0.04 (−0.01–+0.10) | +0.07 (+0.02–+0.12) |
+| EN, 110 | 0.27 (0.19–0.36) · 1.4 s | 0.25 (0.16–0.34) · 2.5 s | 0.23 (0.15–0.31) · 10.4 s |
+| paired vs cloud | | −0.03 (−0.10–+0.05) | −0.05 (−0.11–+0.02) |
+
+Times are the median seconds per request. Fields on the RU gold subset, F1:
+
+| RU fields | who | where | when | what | where (vocab) | identifiers | systems |
+|---|---|---|---|---|---|---|---|
+| gpt-5.4-mini v4 | 0.98 | 0.64 | 0.83 | 0.87 | 0.81 | 0.93 | 0.91 |
+| Qwen3.8-35B-A3B | 0.83 | 0.64 | 0.90 | 0.83 | 0.78 | 0.91 | 0.86 |
+| gemma-4-31B | 0.93 | 0.86 | 0.93 | 0.93 | 0.93 | 0.94 | 0.92 |
+
+**Decision.** Qwen3.8-35B-A3B meets the criterion (department ≥ 0.85 on RU, ≤ 10 s per request): 0.87 at 2.8 s. It can replace the cloud model where requests must not leave the company (story 30), at a cost of about 6 points of department accuracy on RU (the paired range reaches zero) and a weaker "who" (recall 0.71: it often leaves the author out). On `buckets` it is as good as the cloud. gemma-4-31B is as accurate or better, significantly better on `buckets`, and the best on the RU fields, but at 11–14 s per request it misses the time target on this card; it is the choice when quality matters more than speed or on faster hardware. The MoE model is fast because only about 3B of its 35B parameters work per token. The gemma run used the server's `gemma-4-31B-sgpt` preset; what the preset changes besides the model is to be confirmed. The cloud stays the default: it is the most accurate on RU and needs no GPU.
+
 ## Choice of model
 
 **gpt-5.4-mini with prompt v3** is the model for iteration 2.
 
 - It is the best system on the Russian set in every column. gpt-5.4-nano is cheaper and as fast, but loses 0.07 department accuracy (0.86, the lower range end below the 0.85 target) and most of the field quality ("where" 0.39 vs 0.64, "who" 0.80 vs 0.95).
 - TF-IDF matches it on the department with two lines (the ranges overlap), but needs labelled tickets and fills no fields, so it stays the baseline.
-- qwen3:1.7b in Docker on a CPU is not usable (0.29 accuracy, about 3 minutes per request). Larger local models with GPU acceleration are moved to #44; story 30 ("requests do not leave the company") stays open until then.
+- qwen3:1.7b in Docker on a CPU is not usable (0.29 accuracy, about 3 minutes per request). On a 24 GB GPU, Qwen3.8-35B-A3B reaches 0.87 at 2.8 s per request (#44, above), so story 30 ("requests do not leave the company") has a local option.
 - The backend stays switchable (`--backend`, `--model`, `LLM_BACKEND`), so the choice can change without code changes.
 
 ## Target values
@@ -183,4 +206,4 @@ On this set most requests go to triage, because the labels are hard to tell from
 | "when", identifiers F1 | ≥ 0.85 | 0.87, 0.92 (with the shape filter, #35) | met |
 | "where" F1 | ≥ 0.75 | by words 0.64; with the vocabulary 0.81 (0.67–0.93); `systems` F1 0.91 (#34) | met with the vocabulary (lower range end 0.67); by words open |
 | Triage time, request → ticket in work (business goal) | −30 % | triage −69 % (44–79 %) on `ru`: 31 s → 10 s, median; −46 % (−3–67 %) on `buckets`: 76 s → 41 s (#43) | met on `ru` (the author); on `buckets` (a second participant) met at the median, not proven; queue time not measured |
-| Local model as an alternative (story 30) | ≥ 0.85 accuracy, ≤ 10 s | 0.29, ~3 min (qwen3:1.7b, CPU) | open: #44 |
+| Local model as an alternative (story 30) | ≥ 0.85 accuracy, ≤ 10 s | 0.87 (0.78–0.94), 2.8 s (Qwen3.8-35B-A3B, 24 GB GPU, #44) | met at the point estimate; lower range end 0.78 |
