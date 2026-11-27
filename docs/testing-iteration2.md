@@ -62,4 +62,4 @@ No regression: every difference is inside the 95 % ranges, the variation of the 
 
 ## Open
 
-- Admin panel at a 1200 px window: the ticket list cuts off the assignee column and the department list the columns after "fallback" (open tickets, load, accuracy) — they need a horizontal scroll. In the Russian interface the department column shows `name_en`. Cosmetic, recorded in the PR #52 review.
+- Admin panel at a 1200 px window: the ticket list cuts off the assignee column and the department list the columns after "fallback" (open tickets, load, accuracy) — they need a horizontal scroll. In the Russian interface the department column shows `name_en`. Cosmetic, recorded in the PR #52 review; fixed in #77 (PR #78) on 2026-11-27, see [testing-iteration3.md](testing-iteration3.md).

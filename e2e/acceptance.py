@@ -194,7 +194,7 @@ def main() -> int:
             expect(boss.locator(".messagelist .success")).to_be_visible()
             return (
                 "partial",
-                "the language is set and saved; translating tickets into it is #23 (iteration 3)",
+                "the language is set and saved; translating tickets into it is #23 (backlog)",
             )
 
         run.story("25", "Department language", story_25)
