@@ -15,6 +15,7 @@ from django.core.validators import MinValueValidator, RegexValidator
 from django.db import models
 from django.db.models import Q
 from django.db.models.functions import Lower
+from django.utils.translation import get_language
 from django.utils.translation import gettext_lazy as _
 
 from megatron.departments import DepartmentsConfig, RoutingWeights
@@ -135,7 +136,7 @@ class Department(models.Model):
         ]
 
     def __str__(self) -> str:
-        return self.name_en
+        return self.name(get_language() or "ru") or self.name_en
 
     def name(self, language: str) -> str:
         """Display name in the interface language: Russian for "ru", English otherwise."""

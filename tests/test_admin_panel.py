@@ -129,6 +129,30 @@ def test_admin_can_create_and_edit_users(client, staff_admin):
     assert not user.is_active
 
 
+@pytest.mark.parametrize(
+    ("language", "name"), [("ru", "Сеть и связь"), ("en", "Network and communications")]
+)
+def test_admin_localizes_department_in_ticket_and_user_lists(client, staff_admin, language, name):
+    department = Department.objects.create(
+        id="network", name_ru="Сеть и связь", name_en="Network and communications", language="en"
+    )
+    User.objects.create_user(username="operator", department=department)
+    Ticket.objects.create(
+        request=Request.objects.create(text="Network issue"),
+        summary="Network issue",
+        language="en",
+        department=department,
+    )
+    client.force_login(staff_admin)
+
+    for model in ("ticket", "user"):
+        response = client.get(
+            reverse(f"admin:support_{model}_changelist"), headers={"accept-language": language}
+        )
+        assert response.status_code == 200
+        assert f'<td class="field-department nowrap">{name}</td>' in response.content.decode()
+
+
 def test_admin_manages_departments_routing_and_export(client, departments_path, staff_admin):
     import_departments_file(departments_path)
     client.force_login(staff_admin)

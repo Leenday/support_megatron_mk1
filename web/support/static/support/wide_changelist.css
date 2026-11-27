@@ -1,0 +1,31 @@
+#changelist #result_list th,
+#changelist #result_list td {
+    white-space: normal;
+    overflow-wrap: anywhere;
+}
+
+@media (max-width: 1280px) {
+    #changelist .changelist-form-container {
+        flex-direction: column;
+    }
+
+    #changelist .changelist-form-container:has(#changelist-filter) > div {
+        max-width: 100%;
+        width: 100%;
+    }
+
+    #changelist #changelist-filter {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(min(100%, 10rem), 1fr));
+        align-items: start;
+        flex: none;
+        order: 0;
+        width: 100%;
+        margin: 0 0 1rem;
+    }
+
+    #changelist-filter-header,
+    #changelist-filter-extra-actions {
+        grid-column: 1 / -1;
+    }
+}

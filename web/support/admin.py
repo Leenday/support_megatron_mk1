@@ -228,6 +228,7 @@ class RoutingSettingsAdmin(RoutingConfigAdmin):
 class TicketAdmin(SupportModelAdmin):
     form = TicketAdminForm
     allow_change = True
+    change_list_template = "support/wide_changelist.html"
     list_display = (
         "id",
         "summary",
