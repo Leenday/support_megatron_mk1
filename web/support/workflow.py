@@ -11,7 +11,7 @@ from django.db import transaction
 from django.utils import timezone
 from django.utils.translation import gettext as _
 
-from support.models import Department, Ticket, TicketEvent, User
+from support.models import Department, System, Ticket, TicketEvent, User
 
 EDITABLE = ("who", "where", "when", "what", "summary", "tags")
 
@@ -59,6 +59,9 @@ def edit(ticket_id: int, user: User, values: dict) -> Ticket:
         TicketEvent.objects.create(
             ticket=ticket, kind=TicketEvent.Kind.EDITED, actor=user, data=changes
         )
+        from support import vocabulary  # imports this module
+
+        vocabulary.propose_edit(ticket, user, changes)  # a validator confirms or reverts it
     return ticket
 
 
@@ -70,7 +73,11 @@ def next_department(ticket: Ticket) -> str | None:
     bounced between two departments. None when even the fallback has had it.
     """
     tried = {ticket.department_id} | {
-        e.data.get("from") for e in ticket.events.filter(kind=TicketEvent.Kind.RETURNED)
+        e.data.get("from")
+        for e in ticket.events.filter(
+            kind__in=(TicketEvent.Kind.RETURNED, TicketEvent.Kind.REASSIGNED)
+        )
+        if e.data.get("from") != e.data.get("to")
     }
     active = set(Department.objects.filter(active=True).values_list("id", flat=True))
     for candidate in ticket.candidates:
@@ -110,14 +117,31 @@ def return_ticket(ticket_id: int, user: User, reason: str) -> Ticket:
 
 
 @transaction.atomic
-def close(ticket_id: int, user: User, correct_department: str | None = None) -> Ticket:
+def close(
+    ticket_id: int,
+    user: User,
+    correct_department: str | None = None,
+    systems: list[str] | None = None,
+    proposal: tuple[str, str | None] | None = None,
+) -> Ticket:
     """Mark the ticket done, with the specialist's answer to "Was the department right?".
 
     `correct_department` None means "yes"; otherwise it is the department that should have
-    got the ticket. The answer is quality monitoring, not training data (#18, #16).
+    got the ticket. A "yes" makes the ticket part of the confirmed history (#73); a correction
+    goes to a validator first (#67), since specialists' corrections are wrong often enough.
+
+    `systems` are the ticket's systems as the specialist confirmed them (None = as the model
+    gave them), and `proposal` a vocabulary proposal (text, system id or None for a new
+    system) that goes to a validator (#57).
     """
     ticket = locked(ticket_id)
     require_own(ticket, user)
+    before = list(ticket.systems)
+    if systems is not None:
+        known = set(System.objects.filter(pk__in=systems).values_list("pk", flat=True))
+        if set(systems) - known:
+            raise ActionRefused(_("Unknown system."))
+        ticket.systems = [s for s in systems if s in known]
     if correct_department == ticket.department_id:
         correct_department = None
     if (
@@ -127,7 +151,16 @@ def close(ticket_id: int, user: User, correct_department: str | None = None) -> 
         raise ActionRefused(_("Unknown department."))
     ticket.status = Ticket.Status.DONE
     ticket.closed_at = timezone.now()
-    ticket.save(update_fields=["status", "closed_at"])
+    ticket.save(update_fields=["status", "closed_at", "systems"])
+    from support import vocabulary  # imports this module
+
+    proposed = " ".join(proposal[0].split()) if proposal else ""
+    if proposal is not None and proposed:
+        text, system_id = proposal
+        target = System.objects.filter(pk=system_id).first() if system_id else None
+        if system_id and target is None:
+            raise ActionRefused(_("Unknown system."))
+        vocabulary.propose_system(ticket, user, text, target)
     TicketEvent.objects.create(
         ticket=ticket,
         kind=TicketEvent.Kind.STATUS_CHANGED,
@@ -135,8 +168,73 @@ def close(ticket_id: int, user: User, correct_department: str | None = None) -> 
         data={
             "from": Ticket.Status.IN_PROGRESS.value,
             "to": Ticket.Status.DONE.value,
+            "department": ticket.department_id,
             "department_correct": correct_department is None,
             "correct_department": correct_department,
+            "systems": [before, list(ticket.systems)],
+            # Confirmed = kept as the model gave them, with nothing missing from the vocabulary.
+            "systems_confirmed": set(before) == set(ticket.systems) and not proposed,
+            "proposal": proposed,
         },
     )
+    if correct_department is not None:
+        vocabulary.propose_department(ticket, user, correct_department)
+    return ticket
+
+
+@transaction.atomic
+def admin_edit(ticket_id: int, user: User, values: dict) -> Ticket:
+    """Apply the submitted fields to the current row and record the changes."""
+    ticket = locked(ticket_id)
+    if (
+        values.get("department_id", ticket.department_id) != ticket.department_id
+        and ticket.status in Ticket.OPEN
+        and "assignee_id" not in values
+    ):
+        values["assignee_id"] = None
+    if ticket.status in Ticket.OPEN and "assignee_id" in values:
+        values.setdefault(
+            "status", Ticket.Status.IN_PROGRESS if values["assignee_id"] else Ticket.Status.NEW
+        )
+    changes = {
+        field: [getattr(ticket, field), value]
+        for field, value in values.items()
+        if getattr(ticket, field) != value
+    }
+    if not changes:
+        return ticket
+
+    updated_fields = list(changes)
+    for field, (_old, new) in changes.items():
+        setattr(ticket, field, new)
+    if "department_id" in changes or "assignee_id" in changes:
+        source, destination = changes.pop("department_id", [ticket.department_id] * 2)
+        assignment = changes.pop("assignee_id", [ticket.assignee_id] * 2)
+        TicketEvent.objects.create(
+            ticket=ticket,
+            kind=TicketEvent.Kind.REASSIGNED,
+            actor=user,
+            data={"from": source, "to": destination, "assignee": assignment},
+        )
+    if "status" in changes:
+        source, destination = changes.pop("status")
+        ticket.closed_at = timezone.now() if destination == Ticket.Status.DONE else None
+        if destination == Ticket.Status.IN_PROGRESS:
+            ticket.taken_at = timezone.now()
+        elif destination == Ticket.Status.NEW:
+            ticket.taken_at = None
+        TicketEvent.objects.create(
+            ticket=ticket,
+            kind=TicketEvent.Kind.STATUS_CHANGED,
+            actor=user,
+            data={"from": source, "to": destination, "department": ticket.department_id},
+        )
+    if changes:
+        TicketEvent.objects.create(
+            ticket=ticket,
+            kind=TicketEvent.Kind.EDITED,
+            actor=user,
+            data=changes,
+        )
+    ticket.save(update_fields=[*updated_fields, "taken_at", "closed_at"])
     return ticket

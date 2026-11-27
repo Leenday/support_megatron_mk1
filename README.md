@@ -45,16 +45,37 @@ docker compose exec web python web/manage.py create_api_token <username>   # pri
 docker compose exec web python web/manage.py export_departments out/departments.yaml
 ```
 
-On the first start `web` migrates the database and imports the departments from `DEPARTMENTS_PATH`. From then on the database is the source of truth: departments are edited in the admin panel, `import_departments <file>` updates them by id (a department missing from the file is deactivated, never deleted), and `export_departments` writes them back as a config for the CLI and the evaluation, with the current load as `open_tickets`. The load used by routing is the department's open tickets (New, In progress) over its capacity. Every request is saved with its contact and extraction log, and a failed one with its error. Staff roles are the groups Specialist and Admin. Requesters need no account: the form at `/` takes the text and a contact, makes the ticket while the page waits and redirects to a status page at `/status/<request>-<code>/`, where the random code keeps other people's requests unreadable; submissions are limited per address (`REQUEST_FORM_RATE`). The pages follow the browser's language (RU / EN switch in the header); our strings are translated in `web/locale/ru/` (`cd web && python manage.py makemessages -l ru --no-location`, then `compilemessages`; the compiled `.mo` is committed, since the image has no gettext). Staff log in at `/login/` and work in the dashboard at `/desk/`: a specialist (group Specialist with a department) sees the queue of the department's new tickets, oldest first, with their tags and age, "My tickets" and all of the department's tickets, filtered by status, tag and date; an admin sees every department. On a ticket's page are the extracted fields, the original message and the history. "Take" makes the ticket the specialist's and moves it to In progress (the row is locked, so two specialists cannot take one ticket). The assignee edits the fields, with the old and new values recorded, and closes the ticket, answering "Was the department right?" (yes, or the right department). "Return" sends the ticket, as New, to the model's best candidate that has not had it yet, then to the fallback department. The answers and returns are the accuracy in operation (#16), and `taken_at` and `closed_at` the triage time (#43). The JSON API (Django Ninja) gives the CLI's results over HTTP, documented in Swagger UI at `/api/docs` (schema `/api/openapi.json`): `POST /api/extract` (text → routed ticket, nothing saved), `POST /api/tickets` (saved like a form request; 201 with the number, the status link and the ticket, 502 with the number when the model gives no ticket), `GET /api/tickets?status=&department=&limit=&offset=` and `/api/tickets/{id}` (admins see all tickets, specialists their department's, accounts without a role, such as an integration, their own), `GET /api/departments` (with the current load). It takes the browser session or a personal token from `create_api_token`; only its hash is stored, and it is revoked by deleting it in the admin:
+Create the first administrator with `createsuperuser` after applying migrations. For a
+non-interactive Docker deployment, set `DJANGO_SUPERUSER_PASSWORD` in the deployment environment
+and run the following command.
+
+```bash
+docker compose exec -e DJANGO_SUPERUSER_PASSWORD="$DJANGO_SUPERUSER_PASSWORD" web \
+  python web/manage.py createsuperuser --noinput --username admin --email admin@example.com
+```
+
+The admin panel at `/admin/` accepts an email address or username and a password.
+Admins manage Specialist and Admin accounts,
+assign specialists to active departments, and manage departments and routing settings. The
+departments list shows open tickets, capacity usage and routing accuracy. Accuracy divides
+confirmed decisions by all decisions with specialist feedback, counting each return against
+its source department. Use **Export departments to YAML** from that list to download the
+current routing config. The ticket list supports search, filters, editing and reassignment
+with an audit history. The request log includes a filter for failed extractions.
+
+Only admins and Django superusers can sign in at `/admin/`. Specialists use `/login/`
+and `/desk/`. To issue an API token by email, use `create_api_token --email <address>`.
+
+On the first start `web` migrates the database and imports the departments from `DEPARTMENTS_PATH`. From then on the database is the source of truth: departments are edited in the admin panel, `import_departments <file>` updates them by id (a department missing from the file is deactivated, never deleted), and `export_departments` writes them back as a config for the CLI and the evaluation, with the current load as `open_tickets`. The load used by routing is the department's open tickets (New, In progress) over its capacity. Every request is saved with its contact and extraction log, and a failed one with its error. Staff roles are the groups Specialist, Admin and Validator. Requesters need no account: the form at `/` takes the text and a contact, makes the ticket while the page waits and redirects to a status page at `/status/<request>-<code>/`, where the random code keeps other people's requests unreadable; submissions are limited per address (`REQUEST_FORM_RATE`). The pages follow the browser's language (RU / EN switch in the header); our strings are translated in `web/locale/ru/` (`cd web && python manage.py makemessages -l ru --no-location`, then `compilemessages`; the compiled `.mo` is committed, since the image has no gettext). Staff log in at `/login/` and work in the dashboard at `/desk/`: a specialist (group Specialist with a department) sees the queue of the department's new tickets, oldest first, with their tags and age, "My tickets" and all of the department's tickets, filtered by status, tag and date; an admin sees every department. On a ticket's page are the extracted fields, the original message and the history. "Take" makes the ticket the specialist's and moves it to In progress (the row is locked, so two specialists cannot take one ticket). The assignee edits the fields, with the old and new values recorded, and closes the ticket, answering "Was the department right?" (yes, or the right department). "Return" sends the ticket, as New, to the model's best candidate that has not had it yet, then to the fallback department. The answers and returns are the accuracy in operation (#16), and `taken_at` and `closed_at` the triage time (#43). Closing also confirms the ticket's systems (prefilled with the model's answer) and, when "where" names something missing from the vocabulary, proposes a new system or another spelling of a known one (#57). A validator (group Validator, or an admin) reviews the proposals at `/desk/review/`: similar ones are grouped (case, quotes, a case ending), an approved one goes into `System` at once, so the next request gets it in the prompt and the schema, and a rejected one is not asked again; nobody reviews their own. A specialist's hand edit of a field goes to the same page, where the validator confirms it or reverts it with a comment, and the ticket's history keeps both. The page also shows the share of closed tickets whose systems were confirmed, by week, corrections per system, and per specialist the share closed without any correction and of edits confirmed. `RoutingSettings.spelling_auto_approve` (0 = off) approves a spelling once that many different specialists proposed it; a new system always needs a validator. Each request stores the vocabulary version it was made with, next to `prompt_version`. **Abstaining (#73).** Once `RoutingSettings.abstain_min_history` (default 200; 0 = off) tickets with a confirmed department exist, a classifier trained on them (TF-IDF + logistic regression, retrained when the history changes by a tenth) checks the model's best fit. When they disagree, the ticket goes to the fallback department for triage; its page shows the model's choice and the history's, and its history says why. From the same history the model also gets the 5 most similar confirmed tickets as examples before the request (#67; the prompt is then recorded as `v4+examples`), and the ticket page lists them. The confirmed history is the closed tickets whose specialist answered "the department was right" or whose correction ("it should have gone to X") a validator confirmed at `/desk/review/` (#67; a pending or rejected correction never counts, and the closed ticket itself stays where it was) plus solved tickets imported with `python web/manage.py import_history <file.jsonl> [--replace]` (`text`, `expected`). The review page shows the share routed automatically, the wrong routes among closed tickets routed automatically, the share returned or reassigned, and the share of department corrections the validators rejected, as a measure of how far specialists can be trusted as a source of labels. The JSON API (Django Ninja) gives the CLI's results over HTTP, documented in Swagger UI at `/api/docs` (schema `/api/openapi.json`): `POST /api/extract` (text → routed ticket, nothing saved), `POST /api/tickets` (saved like a form request; 201 with the number, the status link and the ticket, 502 with the number when the model gives no ticket), `GET /api/tickets?status=&department=&limit=&offset=` and `/api/tickets/{id}` (admins see all tickets, specialists their department's, accounts without a role, such as an integration, their own), `GET /api/departments` (with the current load). It takes the browser session or a personal token from `create_api_token`; only its hash is stored, and it is revoked by deleting it in the admin:
 
 ```bash
 curl -X POST localhost:8000/api/tickets -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" -d '{"text": "Не работает VPN", "contact": "ivanov@example.com"}'
 ```
 
-Without Docker: `uv run python web/manage.py migrate` (SQLite in `web/db.sqlite3` when `DATABASE_URL` is empty), then `import_departments config/departments.yaml` and `runserver`.
+Without Docker: `uv run python web/manage.py migrate` (SQLite in `web/db.sqlite3` when `DATABASE_URL` is empty), then `uv run python web/manage.py createsuperuser` to set a password interactively. Run `import_departments config/departments.yaml` and `runserver` to start the service.
 
-**Acceptance check.** [e2e/acceptance.py](e2e/acceptance.py) clicks through the iteration 2 user stories in a real browser as the requester, two specialists and the admin, against the service in Docker with Postgres, and writes one result per story with screenshots to `out/acceptance/` (results of the last run: [docs/testing-iteration2.md](docs/testing-iteration2.md)). It drives the installed Google Chrome with Playwright, which is not a project dependency:
+**Acceptance check.** [e2e/acceptance.py](e2e/acceptance.py) clicks through the iteration 2 user stories in a real browser as the requester, two specialists and the admin, against the service in Docker with Postgres, and writes one result per story with screenshots to `out/acceptance/` (results of the last run: [docs/testing-iteration3.md](docs/testing-iteration3.md), earlier ones: [docs/testing-iteration2.md](docs/testing-iteration2.md)). It drives the installed Google Chrome with Playwright, which is not a project dependency:
 
 ```bash
 LLM_BACKEND=fake DJANGO_DEBUG=true docker compose -p megatron-e2e up -d --build web
@@ -94,7 +115,13 @@ uv run megatron-eval data/local/ru --rules        # + rows with the rules applie
 
 The models × metrics table of iteration 1, the choice of model and the target values: [docs/results.md](docs/results.md).
 
+**Examples (#67).** `--examples pool.jsonl` (solved tickets with `text` and `expected`) puts the k most similar ones (`--k`, default 5; TF-IDF over character n-grams) before each request as data, and reports the retrieval hit@k, the share of requests whose right department is among the neighbours. `--skip-similar 0.8` leaves out near-duplicates of the request, which a synthetic set has. A run with examples records the prompt as `v4+examples`. Results: [docs/results.md](docs/results.md).
+
 Prompt tuning uses only the dev part, so the test numbers stay honest: `--part dev` scores `dev.jsonl` against `gold-dev.yaml` (a small gold subset of dev; no baselines, since they are trained on dev) into `out/eval/<set>-dev/`, and `--name` names the run, e.g. `--name gpt-v3` for a prompt variant. Every result records the model and `PROMPT_VERSION` ([src/megatron/prompt.py](src/megatron/prompt.py)).
+
+**Triage time (#43).** `megatron-triage` measures the business goal's part the system changes: a person triages half of 30 requests by hand (department, who / where / when / what) and checks the service's tickets for the other half, on a local page that times each request; `report` gives the median times, the reduction with a bootstrap range and the departments' accuracy. Method, limits and results: [docs/triage-time.md](docs/triage-time.md).
+
+**Splitting a request across departments (#45).** A design note, not implemented: the model would number the request's sentences into parts, each part would become its own ticket of the same request, and a specialist would see the other parts masked. It covers the options, the chosen approach, an effort estimate and a measurement plan on 15 synthetic multi-topic requests ([data/split_requests.jsonl](data/split_requests.jsonl)): [docs/split-request.md](docs/split-request.md).
 
 **Routing.** The model lists 1–3 candidate departments, best fit first. Each candidate gets `score = w_match · match + w_load · (1 − load)`, where `match` is 1.0 / 0.6 / 0.3 by rank (`routing` in the config), and the ticket goes to the highest score. Only candidates are scored, so a department the model did not list never gets the ticket, and the fallback department counts only as the best fit; without load the best fit wins, with load a nearly full best fit can lose to a free second candidate.
 
@@ -142,19 +169,25 @@ gantt
     Systems vocabulary a normalised 'system' next to free-text 'where' [34] :done, t34, 2026-11-21, 2026-11-25
     Rule-based check and extraction of identifiers and dates [35] :done, t35, 2026-11-19, 2026-11-21
     Service done :milestone, m2, 2026-11-13, 0d
-    section 3 · Final
-    Django admin users, roles, departments, all tickets [16] :t16, 2026-11-14, 2026-11-18
-    Translation RU ↔ EN (if time allows) [23] :t23, 2026-11-19, 2026-11-22
+    section 3 · Validation
+    Django admin users, roles, departments, all tickets [16] :done, t16, 2026-11-14, 2026-11-18
     Iteration 2 testing [19] :done, t19, 2026-11-18, 2026-11-20
-    Voice input with Whisper (optional) [20] :t20, 2026-11-21, 2026-11-24
-    Final metrics and report [21] :t21, 2026-11-21, 2026-11-25
-    Final presentation [22] :crit, t22, 2026-11-24, 2026-11-27
-    Measure triage time manual vs automatic [43] :t43, 2026-11-14, 2026-11-21
-    Local models on a GPU qwen3 4b / 8b [44] :t44, 2026-11-17, 2026-11-21
-    Design note split a request across departments [45] :t45, 2026-11-20, 2026-11-22
-    Fact-check ticket claims against the request (if time allows) [36] :t36, 2026-11-21, 2026-11-24
-    Systems vocabulary from specialists' answers, approved by a Validator [57] :t57, 2026-11-14, 2026-11-20
-    Final done :milestone, m3, 2026-11-27, 0d
+    Measure triage time manual vs automatic [43] :done, t43, 2026-11-14, 2026-11-21
+    Local models on a GPU [44] :done, t44, 2026-11-17, 2026-11-25
+    Design note split a request across departments [45] :done, t45, 2026-11-20, 2026-11-22
+    Systems vocabulary from specialists' answers, approved by a Validator [57] :done, t57, 2026-11-14, 2026-11-20
+    Department accuracy with descriptions and similar solved tickets [67] :done, t67, 2026-11-20, 2026-11-24
+    Valid system ids for names in Cyrillic [70] :done, t70, 2026-11-23, 1d
+    Abstain from routing when unsure [73] :done, t73, 2026-11-23, 2026-11-24
+    Admin panel improvements [77] :done, t77, 2026-11-25, 2026-11-27
+    Release v0.3.0 [79] :done, t79, 2026-11-27, 2026-11-29
+    Validation done :milestone, m3, 2026-11-27, 0d
+    section 4 · Final
+    Voice input with Whisper (optional) [20] :t20, 2026-12-01, 2026-12-05
+    Final metrics and report [21] :t21, 2026-12-01, 2026-12-10
+    Final presentation [22] :crit, t22, 2026-12-07, 2026-12-11
+    Fact-check ticket claims against the request (if time allows) [36] :t36, 2026-11-28, 2026-12-03
+    Final done :milestone, m4, 2026-12-11, 0d
 ```
 
 | Issue | Task | Start | Due | Owner | Done |
@@ -176,22 +209,27 @@ gantt
 | [#28](https://github.com/Leenday/support_megatron_mk1/issues/28) | Quality gates: type checking, dependency check, PR title check | 2026-10-28 | 2026-10-30 | Denis | ✅ |
 | [#31](https://github.com/Leenday/support_megatron_mk1/issues/31) | Generalize for other domains and datasets | 2026-10-29 | 2026-11-01 | Denis | ✅ |
 | [#15](https://github.com/Leenday/support_megatron_mk1/issues/15) | Django project, data models, roles and load-aware routing | 2026-11-07 | 2026-11-11 | Denis | ✅ |
-| [#16](https://github.com/Leenday/support_megatron_mk1/issues/16) | Django admin: users, roles, departments, all tickets | 2026-11-14 | 2026-11-18 | Roman |  |
+| [#16](https://github.com/Leenday/support_megatron_mk1/issues/16) | Django admin: users, roles, departments, all tickets | 2026-11-14 | 2026-11-18 | Roman | ✅ |
 | [#17](https://github.com/Leenday/support_megatron_mk1/issues/17) | Open request form and status by link | 2026-11-12 | 2026-11-16 | Denis | ✅ |
 | [#18](https://github.com/Leenday/support_megatron_mk1/issues/18) | Specialist dashboard: take tickets and change statuses | 2026-11-16 | 2026-11-24 | Denis | ✅ |
-| [#23](https://github.com/Leenday/support_megatron_mk1/issues/23) | Translation RU <-> EN (if time allows) | 2026-11-19 | 2026-11-22 | Denis |  |
+| [#23](https://github.com/Leenday/support_megatron_mk1/issues/23) | Translation RU <-> EN (if time allows) | — | backlog | Denis |  |
 | [#19](https://github.com/Leenday/support_megatron_mk1/issues/19) | Iteration 2 testing | 2026-11-18 | 2026-11-20 | All | ✅ |
-| [#20](https://github.com/Leenday/support_megatron_mk1/issues/20) | Voice input with Whisper (optional) | 2026-11-21 | 2026-11-24 | Denis |  |
-| [#21](https://github.com/Leenday/support_megatron_mk1/issues/21) | Final metrics and report | 2026-11-21 | 2026-11-25 | All |  |
-| [#22](https://github.com/Leenday/support_megatron_mk1/issues/22) | Final presentation | 2026-11-24 | 2026-11-27 | All |  |
+| [#20](https://github.com/Leenday/support_megatron_mk1/issues/20) | Voice input with Whisper (optional) | 2026-12-01 | 2026-12-05 | Denis |  |
+| [#21](https://github.com/Leenday/support_megatron_mk1/issues/21) | Final metrics and report | 2026-12-01 | 2026-12-10 | All |  |
+| [#22](https://github.com/Leenday/support_megatron_mk1/issues/22) | Final presentation | 2026-12-07 | 2026-12-11 | All |  |
 | [#42](https://github.com/Leenday/support_megatron_mk1/issues/42) | JSON API with OpenAPI (Swagger) docs | 2026-11-10 | 2026-11-13 | Denis | ✅ |
-| [#43](https://github.com/Leenday/support_megatron_mk1/issues/43) | Measure triage time: manual vs automatic | 2026-11-14 | 2026-11-21 | Denis |  |
-| [#44](https://github.com/Leenday/support_megatron_mk1/issues/44) | Local models on a GPU: qwen3:4b / 8b | 2026-11-17 | 2026-11-21 | Denis |  |
-| [#45](https://github.com/Leenday/support_megatron_mk1/issues/45) | Design note: split a request across departments | 2026-11-20 | 2026-11-22 | Denis |  |
+| [#43](https://github.com/Leenday/support_megatron_mk1/issues/43) | Measure triage time: manual vs automatic | 2026-11-14 | 2026-11-21 | Denis | ✅ |
+| [#44](https://github.com/Leenday/support_megatron_mk1/issues/44) | Local models on a GPU | 2026-11-17 | 2026-11-25 | Daniil | ✅ |
+| [#45](https://github.com/Leenday/support_megatron_mk1/issues/45) | Design note: split a request across departments | 2026-11-20 | 2026-11-22 | Denis | ✅ |
 | [#34](https://github.com/Leenday/support_megatron_mk1/issues/34) | Systems vocabulary: a normalised 'system' next to free-text 'where' | 2026-11-21 | 2026-11-25 | Denis | ✅ |
 | [#35](https://github.com/Leenday/support_megatron_mk1/issues/35) | Rule-based check and extraction of identifiers and dates | 2026-11-19 | 2026-11-21 | Denis | ✅ |
-| [#36](https://github.com/Leenday/support_megatron_mk1/issues/36) | Fact-check ticket claims against the request (if time allows) | 2026-11-21 | 2026-11-24 | Denis |  |
-| [#57](https://github.com/Leenday/support_megatron_mk1/issues/57) | Systems vocabulary from specialists' answers, approved by a Validator | 2026-11-14 | 2026-11-20 | Denis |  |
+| [#36](https://github.com/Leenday/support_megatron_mk1/issues/36) | Fact-check ticket claims against the request (if time allows) | 2026-11-28 | 2026-12-03 | Denis |  |
+| [#57](https://github.com/Leenday/support_megatron_mk1/issues/57) | Systems vocabulary from specialists' answers, approved by a Validator | 2026-11-14 | 2026-11-20 | Denis | ✅ |
+| [#67](https://github.com/Leenday/support_megatron_mk1/issues/67) | Department accuracy: "when to choose" descriptions and similar closed tickets as examples | 2026-11-20 | 2026-11-24 | Denis | ✅ |
+| [#70](https://github.com/Leenday/support_megatron_mk1/issues/70) | Valid system ids for names in Cyrillic | 2026-11-23 | 2026-11-23 | Denis | ✅ |
+| [#73](https://github.com/Leenday/support_megatron_mk1/issues/73) | Abstain from routing when unsure: exit token and a classifier on the history | 2026-11-23 | 2026-11-24 | Denis | ✅ |
+| [#77](https://github.com/Leenday/support_megatron_mk1/issues/77) | Admin panel improvements | 2026-11-25 | 2026-11-27 | Roman | ✅ |
+| [#79](https://github.com/Leenday/support_megatron_mk1/issues/79) | Release v0.3.0 | 2026-11-27 | 2026-11-29 | Denis | ✅ |
 
 ## Stages
 
@@ -200,6 +238,7 @@ gantt
 | 0 · Initiation and methods review | 2026-10-16 | Idea, first presentation, methods review, impact map, calendar plan. |
 | 1 · Console MVP | 2026-11-06 | Iteration 1: console app, text in -> JSON ticket out; test set and model comparison. |
 | 2 · Service | 2026-11-13 | Iteration 2: Django service with an open request form (no account for requesters) and two staff roles (specialist, admin): JSON API with OpenAPI docs, request form, specialist dashboard with statuses, load-aware routing from the database. Report on 2026-11-13; the extended admin panel (#16), the testing rerun with the v0.2.0 release (#19) and the triage-time measurement (#43) moved to iteration 3. |
-| 3 · Final | 2026-11-27 | Iteration 3 (2026-11-14 – 2026-11-27): finish the admin panel and release v0.2.0, measure the triage time, grow the systems vocabulary from specialists' answers (Validator), final metrics, report and presentation. If time allows: local models on a GPU, RU/EN translation, voice input, fact-check, splitting a request by department. |
+| 3 · Validation | 2026-11-27 | Iteration 3 (2026-11-14 – 2026-11-27), report on 2026-11-27 and release v0.3.0: the extended admin panel (#16, #77), release v0.2.0 (#19), the triage-time measurement (#43), the systems vocabulary grown from specialists' answers and approved by a Validator (#57), department accuracy with "when to choose" descriptions and similar solved tickets as examples (#67), abstaining from routing when the model and a classifier on the confirmed history disagree (#73), local models on a GPU (#44), a design note on splitting a request by department (#45). RU/EN translation (#23) moved to the backlog. |
+| 4 · Final | 2026-12-11 | Final iteration (2026-11-28 – 2026-12-11): final metrics, report, rehearsal on 2026-12-04 and presentation on 2026-12-11. If time allows: fact-check of ticket claims, voice input. |
 
-*Dates after 2026-10-16 are planned and may shift; iteration 2 was reported on 2026-11-13; iteration 3 ends on 2026-11-27.*
+*Dates after 2026-10-16 are planned and may shift; iteration 2 was reported on 2026-11-13; iteration 3 was reported on 2026-11-27; the final presentation is on 2026-12-11.*

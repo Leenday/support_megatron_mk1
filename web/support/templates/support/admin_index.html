@@ -1,0 +1,10 @@
+{% extends "admin/index.html" %}
+{% load i18n %}
+
+{% block content %}
+  {% if app_list %}
+    {{ block.super }}
+  {% endif %}
+{% endblock %}
+
+{% block sidebar %}{% endblock %}

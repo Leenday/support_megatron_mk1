@@ -1,17 +1,17 @@
 # Iteration 2 testing (#19)
 
-Checked on 2026-11-11 on the `develop` branch after #15, #17, #42, #18 and #35, and rerun on 2026-11-17 after #34 (systems vocabulary) with the same result, before the v0.2.0 release. The extended admin panel (#16, PR #52) moved to iteration 3: v0.2.0 is released without it, and stories 27–29 are checked again when it is merged.
+Checked on 2026-11-11 on the `develop` branch after #15, #17, #42, #18 and #35, and rerun on 2026-11-17 after #34 (systems vocabulary) with the same result, before the v0.2.0 release. The extended admin panel (#16, PR #52) moved to iteration 3: v0.2.0 is released without it. Stories 27–29 were checked again on 2026-11-19 on PR #52 with `develop` merged in (the code merged as f6599d5): all 24 stories pass.
 
 How:
 
 - **User stories:** [e2e/acceptance.py](../e2e/acceptance.py) in Chrome against the service in Docker with Postgres (`LLM_BACKEND=fake`, so the routed departments are predictable). It acts as a requester, two specialists and the admin, and the admin creates the specialists in the admin panel. Rerun: README "Acceptance check".
 - **Time to ticket with the real model:** 5 synthetic requests through the form with gpt-5.4-mini.
 - **Regression:** each test set's department config imported into the database, exported again (`export_departments`), and the evaluation rerun with gpt-5.4-mini v3 on the exported config.
-- **Unit tests:** 231 (`uv run pytest`, 2026-11-17), no network.
+- **Unit tests:** 231 (`uv run pytest`, 2026-11-17), 246 with #16 (2026-11-19), no network.
 
 ## User stories
 
-✅ works · 🟡 works with a limit (see the note) · ⏳ waits for the admin panel (#16, iteration 3)
+✅ works · 🟡 works with a limit (see the note) · ⏳ waited for the admin panel (#16) on 11.11 and 17.11
 
 | Story | | Result | Note |
 |---|---|---|---|
@@ -30,17 +30,17 @@ How:
 | 19 | My tickets | ✅ | |
 | 20 | Edit own tickets | ✅ | The history keeps old and new values |
 | 21 | Filters | ✅ | Status, tag, date range |
-| 22 | Users with a role and a department | ✅ | Created in the admin panel; they log in to the dashboard. Deleting is possible in the plain admin; #16 replaces it with deactivation |
+| 22 | Users with a role and a department | ✅ | Created in the admin panel; they log in to the dashboard and cannot open the admin panel. With #16 users are deactivated, never deleted |
 | 23 | Departments with descriptions | ✅ | Added, edited, deactivated (never deleted: tickets refer to them) |
 | 24 | Department capacity | ✅ | Used by the load at once (`/api/departments`) |
 | 25 | Department language | 🟡 | Set and saved; translating tickets into it is #23 (iteration 3, as planned) |
 | 26 | Routing weights | ✅ | Changed in the admin panel and used by the next request |
-| 27 | All tickets with status and assignee | ⏳ | All tickets are listed, without status and assignee columns |
-| 28 | Edit or reassign any ticket | ⏳ | Works (after the fix below), but the reassignment is not recorded as an event |
-| 29 | Open tickets per department | ⏳ | In `GET /api/departments`; not yet in the admin panel |
+| 27 | All tickets with status and assignee | ✅ | With #16 (19.11): status and assignee columns, search and filters; on 11.11 ⏳, without the columns |
+| 28 | Edit or reassign any ticket | ✅ | With #16 (19.11): the reassignment is recorded in the ticket's history with both departments; on 11.11 ⏳, no event |
+| 29 | Open tickets per department | ✅ | With #16 (19.11): the department list shows open tickets (equal to `/api/departments`), load and accuracy; on 11.11 ⏳, API only |
 | 33 | Log of requests and answers | ✅ | Every request with its text, model, prompt version, attempts, time, dropped identifiers and error |
 
-20 of 24 stories work, 1 works with a planned limit (25), 3 wait for #16 (27–29).
+On 11.11 and 17.11: 20 of 24 stories worked, 1 with a planned limit (25), 3 waited for #16 (27–29). On 19.11 with #16: 23 of 24 work, 1 with a planned limit (25), 0 failed.
 
 ## Bugs found and fixed
 
@@ -62,4 +62,4 @@ No regression: every difference is inside the 95 % ranges, the variation of the 
 
 ## Open
 
-- Stories 27–29 → #16 (PR #52, iteration 3); rerun the check after it is merged.
+- Admin panel at a 1200 px window: the ticket list cuts off the assignee column and the department list the columns after "fallback" (open tickets, load, accuracy) — they need a horizontal scroll. In the Russian interface the department column shows `name_en`. Cosmetic, recorded in the PR #52 review; fixed in #77 (PR #78) on 2026-11-27, see [testing-iteration3.md](testing-iteration3.md).

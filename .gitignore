@@ -30,3 +30,4 @@ data/local/
 # Django development database and collected static files
 web/db.sqlite3
 web/staticfiles/
+compose.override.yaml

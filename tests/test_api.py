@@ -190,3 +190,13 @@ def test_create_api_token_command(client, bot, capsys):
     assert ApiToken.objects.get().key_hash != key  # only the hash is stored
     response = client.get("/api/departments", headers={"authorization": f"Bearer {key}"})
     assert response.status_code == 200
+
+
+def test_create_api_token_command_by_email(bot, capsys):
+    bot.email = "integration@example.org"
+    bot.save(update_fields=["email"])
+
+    call_command("create_api_token", "--email", "INTEGRATION@example.org")
+
+    assert capsys.readouterr().out.startswith("mk1_")
+    assert ApiToken.objects.get().user_id == bot.pk

@@ -19,7 +19,15 @@ import openai
 from pydantic import BaseModel, Field, ValidationError
 
 from megatron.departments import DepartmentsConfig
-from megatron.prompt import build_system_prompt
+from megatron.examples import ExampleIndex, render_examples
+from megatron.prompt import (
+    EXAMPLES_INSTRUCTION,
+    EXAMPLES_SUFFIX,
+    PROMPT_VERSION,
+    REQUEST_MARK,
+    build_system_prompt,
+    build_user_message,
+)
 from megatron.rules import apply_rules
 from megatron.settings import Settings
 from megatron.systems import find_systems
@@ -54,6 +62,10 @@ class Extraction(BaseModel):
         description="identifiers the model gave that are not in the request text or do not "
         "look like identifiers (plain words)"
     )
+    examples: list[tuple[str, str]] = Field(
+        default=[],
+        description="solved tickets shown as examples: the start of the text, department",
+    )
 
 
 class Extractor(ABC):
@@ -66,6 +78,17 @@ class Extractor(ABC):
         self.model = model
         self.endpoint = endpoint
         self.max_retries = max_retries
+        self.examples: ExampleIndex | None = None
+        self.k = 0
+
+    def use_examples(self, index: ExampleIndex, k: int = 5) -> None:
+        """Show the k most similar solved tickets before each request (#67, step 2)."""
+        self.examples, self.k = index, k
+        self.system_prompt += EXAMPLES_INSTRUCTION
+
+    @property
+    def prompt_version(self) -> str:
+        return PROMPT_VERSION + (EXAMPLES_SUFFIX if self.examples else "")
 
     @abstractmethod
     def complete(self, messages: Messages, schema: dict[str, Any]) -> str:
@@ -75,9 +98,10 @@ class Extractor(ABC):
         return self.extract_detailed(text).ticket
 
     def extract_detailed(self, text: str) -> Extraction:
+        examples = self.examples.similar(text, self.k) if self.examples else []
         messages = [
             {"role": "system", "content": self.system_prompt},
-            {"role": "user", "content": text},
+            {"role": "user", "content": build_user_message(text, render_examples(examples))},
         ]
         schema = self.ticket_model.model_json_schema()
         for attempt in range(1, self.max_retries + 2):
@@ -97,6 +121,7 @@ class Extractor(ABC):
                     ticket=keep_fallback_alone(checked, self.fallback),
                     attempts=attempt,
                     dropped_identifiers=dropped,
+                    examples=[(e.text[:200], e.expected or "") for e, _ in examples],
                 )
         raise ExtractionError(f"{self.model} returned no valid ticket after {attempt} attempts")
 
@@ -186,7 +211,8 @@ class FakeExtractor(Extractor):
         self.config = config
 
     def complete(self, messages: Messages, schema: dict[str, Any]) -> str:
-        text = messages[-1]["content"]
+        # Only the request: the examples before it would add their keywords.
+        text = messages[-1]["content"].split(REQUEST_MARK, 1)[-1]
         words = {w[:STEM] for w in re.findall(r"\w+", text.lower())}
         hits: dict[str, list[str]] = {}
         for d in self.config.departments:
